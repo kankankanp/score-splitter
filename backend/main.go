@@ -4,38 +4,49 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
+
+	"score-splitter/backend/gen/go/score"
+	"score-splitter/backend/gen/go/scoreconnect"
 
 	"connectrpc.com/connect"
 )
 
-const pingProcedure = "/ping.v1.PingService/Ping"
+type scoreService struct{}
 
-// PingRequest is a minimal request payload for testing connectivity.
-type PingRequest struct {
-	Message string `json:"message"`
-}
+func (s *scoreService) UploadScore(
+    ctx context.Context,
+    req *connect.Request[score.UploadScoreRequest],
+) (*connect.Response[score.UploadScoreResponse], error) {
+    dir := "uploads"
+    if err := os.MkdirAll(dir, 0755); err != nil {
+        return nil, connect.NewError(connect.CodeInternal, err)
+    }
 
-// PingResponse is a minimal response payload for testing connectivity.
-type PingResponse struct {
-	Message string `json:"message"`
+    filename := req.Msg.GetTitle() + ".pdf"
+    path := filepath.Join(dir, filename)
+
+    if err := os.WriteFile(path, req.Msg.GetPdfFile(), 0644); err != nil {
+        return nil, connect.NewError(connect.CodeInternal, err)
+    }
+
+    res := connect.NewResponse(&score.UploadScoreResponse{
+        Message: "PDF uploaded successfully",
+        ScoreId: filename,
+    })
+    return res, nil
 }
 
 func main() {
-	mux := http.NewServeMux()
+    mux := http.NewServeMux()
 
-	pingHandler := connect.NewUnaryHandler(
-		pingProcedure,
-		func(ctx context.Context, req *connect.Request[PingRequest]) (*connect.Response[PingResponse], error) {
-			log.Printf("received ping: %s", req.Msg.Message)
-			res := connect.NewResponse(&PingResponse{Message: "pong"})
-			return res, nil
-		},
-	)
+    // 2つの値（パスとハンドラ）を受け取る
+    path, handler := scoreconnect.NewScoreServiceHandler(&scoreService{})
+    mux.Handle(path, handler)
 
-	mux.Handle(pingProcedure, pingHandler)
-
-	log.Println("listening on :8085")
-	if err := http.ListenAndServe(":8085", mux); err != nil {
-		log.Fatalf("server stopped: %v", err)
-	}
+    log.Println("listening on :8085")
+    if err := http.ListenAndServe(":8085", mux); err != nil {
+        log.Fatalf("server stopped: %v", err)
+    }
 }
