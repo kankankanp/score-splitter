@@ -56,7 +56,8 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const chunkSize = 0x8000;
   for (let index = 0; index < bytes.length; index += chunkSize) {
     const chunk = bytes.subarray(index, index + chunkSize);
-    binary += String.fromCharCode(...chunk);
+    const chunkArray = Array.from(chunk);
+    binary += String.fromCharCode(...chunkArray);
   }
   return btoa(binary);
 }
@@ -69,7 +70,8 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
   const chunkSize = 0x8000;
   for (let index = 0; index < bytes.length; index += chunkSize) {
     const chunk = bytes.subarray(index, index + chunkSize);
-    binary += String.fromCharCode(...chunk);
+    const chunkArray = Array.from(chunk);
+    binary += String.fromCharCode(...chunkArray);
   }
   return btoa(binary);
 }
@@ -94,8 +96,10 @@ export async function uploadScore({
     method: "POST",
     headers: CONNECT_HEADERS,
     body: JSON.stringify({
-      title,
-      pdfFile,
+      json: {
+        title,
+        pdfFile,
+      },
     }),
   });
 
@@ -118,7 +122,9 @@ export async function uploadScore({
     );
   }
 
-  const body = data as { message?: string; scoreId?: string };
+  const body = (data as { json?: { message?: string; scoreId?: string };
+    message?: string;
+    scoreId?: string }).json ?? {};
   return {
     message: body.message || "アップロードが完了しました",
     scoreId: body.scoreId || "",
@@ -145,10 +151,20 @@ export async function trimScore({
     })),
   };
 
+  if (payload.pdfFile.length === 0) {
+    console.error("PDF base64 is empty", {
+      title,
+      pdfBytesLength: pdfBytes.length,
+      pdfBytesSample: pdfBytes.slice(0, 16),
+      areasCount: areas.length,
+    });
+    throw new Error("PDFの内容を読み取れませんでした");
+  }
+
   const response = await fetch(TRIM_ENDPOINT, {
     method: "POST",
     headers: CONNECT_HEADERS,
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ json: payload }),
   });
 
   const text = await response.text();
@@ -170,12 +186,14 @@ export async function trimScore({
     );
   }
 
-  const body = data as {
-    message?: string;
-    filename?: string;
-    trimmedPdf?: string;
-    trimmed_pdf?: string;
-  };
+  const body = (data as {
+    json?: {
+      message?: string;
+      filename?: string;
+      trimmedPdf?: string;
+      trimmed_pdf?: string;
+    };
+  }).json ?? {};
   const base64 = body.trimmedPdf || body.trimmed_pdf;
   if (typeof base64 !== "string" || base64.length === 0) {
     throw new Error("生成されたPDFを取得できませんでした");
