@@ -7,12 +7,11 @@
 package score
 
 import (
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
-
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -126,6 +125,194 @@ func (x *UploadScoreResponse) GetScoreId() string {
 	return ""
 }
 
+type CropArea struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Top           float64                `protobuf:"fixed64,1,opt,name=top,proto3" json:"top,omitempty"`       // 上端の開始位置 (0.0 - 1.0)
+	Left          float64                `protobuf:"fixed64,2,opt,name=left,proto3" json:"left,omitempty"`     // 左端の開始位置 (0.0 - 1.0)
+	Width         float64                `protobuf:"fixed64,3,opt,name=width,proto3" json:"width,omitempty"`   // 幅 (0.0 - 1.0)
+	Height        float64                `protobuf:"fixed64,4,opt,name=height,proto3" json:"height,omitempty"` // 高さ (0.0 - 1.0)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CropArea) Reset() {
+	*x = CropArea{}
+	mi := &file_score_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CropArea) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CropArea) ProtoMessage() {}
+
+func (x *CropArea) ProtoReflect() protoreflect.Message {
+	mi := &file_score_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CropArea.ProtoReflect.Descriptor instead.
+func (*CropArea) Descriptor() ([]byte, []int) {
+	return file_score_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CropArea) GetTop() float64 {
+	if x != nil {
+		return x.Top
+	}
+	return 0
+}
+
+func (x *CropArea) GetLeft() float64 {
+	if x != nil {
+		return x.Left
+	}
+	return 0
+}
+
+func (x *CropArea) GetWidth() float64 {
+	if x != nil {
+		return x.Width
+	}
+	return 0
+}
+
+func (x *CropArea) GetHeight() float64 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
+}
+
+type TrimScoreRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Title         string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`                    // 生成するPDFのベース名
+	PdfFile       []byte                 `protobuf:"bytes,2,opt,name=pdf_file,json=pdfFile,proto3" json:"pdf_file,omitempty"` // 元のPDF
+	Areas         []*CropArea            `protobuf:"bytes,3,rep,name=areas,proto3" json:"areas,omitempty"`                    // トリミングエリア
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TrimScoreRequest) Reset() {
+	*x = TrimScoreRequest{}
+	mi := &file_score_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TrimScoreRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TrimScoreRequest) ProtoMessage() {}
+
+func (x *TrimScoreRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_score_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TrimScoreRequest.ProtoReflect.Descriptor instead.
+func (*TrimScoreRequest) Descriptor() ([]byte, []int) {
+	return file_score_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *TrimScoreRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *TrimScoreRequest) GetPdfFile() []byte {
+	if x != nil {
+		return x.PdfFile
+	}
+	return nil
+}
+
+func (x *TrimScoreRequest) GetAreas() []*CropArea {
+	if x != nil {
+		return x.Areas
+	}
+	return nil
+}
+
+type TrimScoreResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`                         // 結果メッセージ
+	TrimmedPdf    []byte                 `protobuf:"bytes,2,opt,name=trimmed_pdf,json=trimmedPdf,proto3" json:"trimmed_pdf,omitempty"` // 生成したPDF
+	Filename      string                 `protobuf:"bytes,3,opt,name=filename,proto3" json:"filename,omitempty"`                       // 推奨ファイル名
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TrimScoreResponse) Reset() {
+	*x = TrimScoreResponse{}
+	mi := &file_score_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TrimScoreResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TrimScoreResponse) ProtoMessage() {}
+
+func (x *TrimScoreResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_score_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TrimScoreResponse.ProtoReflect.Descriptor instead.
+func (*TrimScoreResponse) Descriptor() ([]byte, []int) {
+	return file_score_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *TrimScoreResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *TrimScoreResponse) GetTrimmedPdf() []byte {
+	if x != nil {
+		return x.TrimmedPdf
+	}
+	return nil
+}
+
+func (x *TrimScoreResponse) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
 var File_score_proto protoreflect.FileDescriptor
 
 const file_score_proto_rawDesc = "" +
@@ -136,9 +323,24 @@ const file_score_proto_rawDesc = "" +
 	"\bpdf_file\x18\x02 \x01(\fR\apdfFile\"J\n" +
 	"\x13UploadScoreResponse\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12\x19\n" +
-	"\bscore_id\x18\x02 \x01(\tR\ascoreId2T\n" +
+	"\bscore_id\x18\x02 \x01(\tR\ascoreId\"^\n" +
+	"\bCropArea\x12\x10\n" +
+	"\x03top\x18\x01 \x01(\x01R\x03top\x12\x12\n" +
+	"\x04left\x18\x02 \x01(\x01R\x04left\x12\x14\n" +
+	"\x05width\x18\x03 \x01(\x01R\x05width\x12\x16\n" +
+	"\x06height\x18\x04 \x01(\x01R\x06height\"j\n" +
+	"\x10TrimScoreRequest\x12\x14\n" +
+	"\x05title\x18\x01 \x01(\tR\x05title\x12\x19\n" +
+	"\bpdf_file\x18\x02 \x01(\fR\apdfFile\x12%\n" +
+	"\x05areas\x18\x03 \x03(\v2\x0f.score.CropAreaR\x05areas\"j\n" +
+	"\x11TrimScoreResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x12\x1f\n" +
+	"\vtrimmed_pdf\x18\x02 \x01(\fR\n" +
+	"trimmedPdf\x12\x1a\n" +
+	"\bfilename\x18\x03 \x01(\tR\bfilename2\x94\x01\n" +
 	"\fScoreService\x12D\n" +
-	"\vUploadScore\x12\x19.score.UploadScoreRequest\x1a\x1a.score.UploadScoreResponseB+Z)score-splitter/backend/gen/go/score;scoreb\x06proto3"
+	"\vUploadScore\x12\x19.score.UploadScoreRequest\x1a\x1a.score.UploadScoreResponse\x12>\n" +
+	"\tTrimScore\x12\x17.score.TrimScoreRequest\x1a\x18.score.TrimScoreResponseB+Z)score-splitter/backend/gen/go/score;scoreb\x06proto3"
 
 var (
 	file_score_proto_rawDescOnce sync.Once
@@ -152,19 +354,25 @@ func file_score_proto_rawDescGZIP() []byte {
 	return file_score_proto_rawDescData
 }
 
-var file_score_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_score_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_score_proto_goTypes = []any{
 	(*UploadScoreRequest)(nil),  // 0: score.UploadScoreRequest
 	(*UploadScoreResponse)(nil), // 1: score.UploadScoreResponse
+	(*CropArea)(nil),            // 2: score.CropArea
+	(*TrimScoreRequest)(nil),    // 3: score.TrimScoreRequest
+	(*TrimScoreResponse)(nil),   // 4: score.TrimScoreResponse
 }
 var file_score_proto_depIdxs = []int32{
-	0, // 0: score.ScoreService.UploadScore:input_type -> score.UploadScoreRequest
-	1, // 1: score.ScoreService.UploadScore:output_type -> score.UploadScoreResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	2, // 0: score.TrimScoreRequest.areas:type_name -> score.CropArea
+	0, // 1: score.ScoreService.UploadScore:input_type -> score.UploadScoreRequest
+	3, // 2: score.ScoreService.TrimScore:input_type -> score.TrimScoreRequest
+	1, // 3: score.ScoreService.UploadScore:output_type -> score.UploadScoreResponse
+	4, // 4: score.ScoreService.TrimScore:output_type -> score.TrimScoreResponse
+	3, // [3:5] is the sub-list for method output_type
+	1, // [1:3] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_score_proto_init() }
@@ -178,7 +386,7 @@ func file_score_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_score_proto_rawDesc), len(file_score_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

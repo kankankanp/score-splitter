@@ -6,6 +6,7 @@ option go_package = "score-splitter/backend/gen/go/score;score";
 
 service ScoreService {
   rpc UploadScore(UploadScoreRequest) returns (UploadScoreResponse);
+  rpc TrimScore(TrimScoreRequest) returns (TrimScoreResponse);
 }
 
 message UploadScoreRequest {
@@ -16,4 +17,23 @@ message UploadScoreRequest {
 message UploadScoreResponse {
   string message = 1;    // 結果メッセージ
   string score_id = 2;   // 保存したスコアのIDなど
+}
+
+message CropArea {
+  double top = 1;        // 上端の開始位置 (0.0 - 1.0)
+  double left = 2;       // 左端の開始位置 (0.0 - 1.0)
+  double width = 3;      // 幅 (0.0 - 1.0)
+  double height = 4;     // 高さ (0.0 - 1.0)
+}
+
+message TrimScoreRequest {
+  string title = 1;             // 生成するPDFのベース名
+  bytes pdf_file = 2;           // 元のPDF
+  repeated CropArea areas = 3;  // トリミングエリア
+}
+
+message TrimScoreResponse {
+  string message = 1;       // 結果メッセージ
+  bytes trimmed_pdf = 2;    // 生成したPDF
+  string filename = 3;      // 推奨ファイル名
 }

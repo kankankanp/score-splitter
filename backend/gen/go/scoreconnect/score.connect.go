@@ -36,11 +36,14 @@ const (
 	// ScoreServiceUploadScoreProcedure is the fully-qualified name of the ScoreService's UploadScore
 	// RPC.
 	ScoreServiceUploadScoreProcedure = "/score.ScoreService/UploadScore"
+	// ScoreServiceTrimScoreProcedure is the fully-qualified name of the ScoreService's TrimScore RPC.
+	ScoreServiceTrimScoreProcedure = "/score.ScoreService/TrimScore"
 )
 
 // ScoreServiceClient is a client for the score.ScoreService service.
 type ScoreServiceClient interface {
 	UploadScore(context.Context, *connect.Request[score.UploadScoreRequest]) (*connect.Response[score.UploadScoreResponse], error)
+	TrimScore(context.Context, *connect.Request[score.TrimScoreRequest]) (*connect.Response[score.TrimScoreResponse], error)
 }
 
 // NewScoreServiceClient constructs a client for the score.ScoreService service. By default, it uses
@@ -60,12 +63,19 @@ func NewScoreServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(scoreServiceMethods.ByName("UploadScore")),
 			connect.WithClientOptions(opts...),
 		),
+		trimScore: connect.NewClient[score.TrimScoreRequest, score.TrimScoreResponse](
+			httpClient,
+			baseURL+ScoreServiceTrimScoreProcedure,
+			connect.WithSchema(scoreServiceMethods.ByName("TrimScore")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // scoreServiceClient implements ScoreServiceClient.
 type scoreServiceClient struct {
 	uploadScore *connect.Client[score.UploadScoreRequest, score.UploadScoreResponse]
+	trimScore   *connect.Client[score.TrimScoreRequest, score.TrimScoreResponse]
 }
 
 // UploadScore calls score.ScoreService.UploadScore.
@@ -73,9 +83,15 @@ func (c *scoreServiceClient) UploadScore(ctx context.Context, req *connect.Reque
 	return c.uploadScore.CallUnary(ctx, req)
 }
 
+// TrimScore calls score.ScoreService.TrimScore.
+func (c *scoreServiceClient) TrimScore(ctx context.Context, req *connect.Request[score.TrimScoreRequest]) (*connect.Response[score.TrimScoreResponse], error) {
+	return c.trimScore.CallUnary(ctx, req)
+}
+
 // ScoreServiceHandler is an implementation of the score.ScoreService service.
 type ScoreServiceHandler interface {
 	UploadScore(context.Context, *connect.Request[score.UploadScoreRequest]) (*connect.Response[score.UploadScoreResponse], error)
+	TrimScore(context.Context, *connect.Request[score.TrimScoreRequest]) (*connect.Response[score.TrimScoreResponse], error)
 }
 
 // NewScoreServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -91,10 +107,18 @@ func NewScoreServiceHandler(svc ScoreServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(scoreServiceMethods.ByName("UploadScore")),
 		connect.WithHandlerOptions(opts...),
 	)
+	scoreServiceTrimScoreHandler := connect.NewUnaryHandler(
+		ScoreServiceTrimScoreProcedure,
+		svc.TrimScore,
+		connect.WithSchema(scoreServiceMethods.ByName("TrimScore")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/score.ScoreService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ScoreServiceUploadScoreProcedure:
 			scoreServiceUploadScoreHandler.ServeHTTP(w, r)
+		case ScoreServiceTrimScoreProcedure:
+			scoreServiceTrimScoreHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -106,4 +130,8 @@ type UnimplementedScoreServiceHandler struct{}
 
 func (UnimplementedScoreServiceHandler) UploadScore(context.Context, *connect.Request[score.UploadScoreRequest]) (*connect.Response[score.UploadScoreResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("score.ScoreService.UploadScore is not implemented"))
+}
+
+func (UnimplementedScoreServiceHandler) TrimScore(context.Context, *connect.Request[score.TrimScoreRequest]) (*connect.Response[score.TrimScoreResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("score.ScoreService.TrimScore is not implemented"))
 }
