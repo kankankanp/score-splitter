@@ -38,12 +38,28 @@ func (s *scoreService) UploadScore(
     return res, nil
 }
 
+// CORSミドルウェアを追加
+func corsMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Access-Control-Allow-Origin", "*")
+        w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Connect-Protocol-Version")
+        
+        if r.Method == "OPTIONS" {
+            w.WriteHeader(http.StatusOK)
+            return
+        }
+        
+        next.ServeHTTP(w, r)
+    })
+}
+
 func main() {
     mux := http.NewServeMux()
 
     // 2つの値（パスとハンドラ）を受け取る
     path, handler := scoreconnect.NewScoreServiceHandler(&scoreService{})
-    mux.Handle(path, handler)
+    mux.Handle(path, corsMiddleware(handler))
 
     log.Println("listening on :8085")
     if err := http.ListenAndServe(":8085", mux); err != nil {
