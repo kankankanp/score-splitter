@@ -5,10 +5,12 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
   GlobalWorkerOptions,
+  PasswordResponses,
   getDocument,
   type PDFDocumentProxy,
 } from "pdfjs-dist";
@@ -115,10 +117,18 @@ function App() {
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [generating, setGenerating] = useState<boolean>(false);
+  const [passwordPromptOpen, setPasswordPromptOpen] = useState<boolean>(false);
+  const [passwordPromptMessage, setPasswordPromptMessage] =
+    useState<string>("");
+  const [passwordValue, setPasswordValue] = useState<string>("");
 
   const pdfDocumentRef = useRef<PDFDocumentProxy | null>(null);
   const pageContainerRef = useRef<HTMLDivElement | null>(null);
   const interactionRef = useRef<InteractionState | null>(null);
+  const passwordResolverRef =
+    useRef<((value: string | null) => void) | null>(null);
+  const passwordInputRef = useRef<HTMLInputElement | null>(null);
+  const passwordCancelledRef = useRef<boolean>(false);
 
   const resetState = useCallback(() => {
     pdfDocumentRef.current = null;
@@ -130,7 +140,86 @@ function App() {
     setActiveAreaId(null);
     setStatusMessage("");
     setErrorMessage("");
+    setPdfName("");
+    if (passwordResolverRef.current) {
+      passwordResolverRef.current(null);
+    }
+    passwordResolverRef.current = null;
+    passwordCancelledRef.current = false;
+    setPasswordPromptOpen(false);
+    setPasswordPromptMessage("");
+    setPasswordValue("");
   }, []);
+
+  useEffect(() => {
+    if (!passwordPromptOpen) {
+      return undefined;
+    }
+    const frame = requestAnimationFrame(() => {
+      passwordInputRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [passwordPromptOpen]);
+
+  const requestPassword = useCallback((message: string) => {
+    return new Promise<string | null>((resolve) => {
+      if (passwordResolverRef.current) {
+        passwordResolverRef.current(null);
+      }
+      passwordResolverRef.current = resolve;
+      setPasswordPromptMessage(message);
+      setPasswordValue("");
+      setPasswordPromptOpen(true);
+      setLoadingMessage("パスワードの入力を待機しています…");
+    });
+  }, []);
+
+  const handlePasswordSubmit = useCallback(() => {
+    if (passwordValue.length === 0) {
+      return;
+    }
+    const resolver = passwordResolverRef.current;
+    if (resolver) {
+      resolver(passwordValue);
+    }
+    passwordResolverRef.current = null;
+    setPasswordPromptOpen(false);
+    setPasswordValue("");
+    setLoadingMessage("PDFを読み込んでいます…");
+  }, [passwordValue]);
+
+  const handlePasswordCancel = useCallback(() => {
+    const resolver = passwordResolverRef.current;
+    if (resolver) {
+      resolver(null);
+    }
+    passwordResolverRef.current = null;
+    setPasswordPromptOpen(false);
+    setPasswordValue("");
+    setLoadingMessage("");
+  }, []);
+
+  const handlePasswordInputChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setPasswordValue(event.target.value);
+    },
+    [],
+  );
+
+  const handlePasswordKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLInputElement>) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        handlePasswordCancel();
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        handlePasswordSubmit();
+      }
+    },
+    [handlePasswordCancel, handlePasswordSubmit],
+  );
 
   const handleFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
@@ -143,11 +232,32 @@ function App() {
       setPdfName(file.name);
       setLoadingMessage("PDFを読み込んでいます…");
 
+      passwordCancelledRef.current = false;
+
       try {
         const bytes = new Uint8Array(await file.arrayBuffer());
         setPdfBytes(bytes);
 
         const loadingTask = getDocument({ data: bytes });
+        loadingTask.onPassword = (updatePassword, reason) => {
+          const message =
+            reason === PasswordResponses.NEED_PASSWORD
+              ? "このPDFはパスワードで保護されています。パスワードを入力してください。"
+              : "パスワードが違います。もう一度入力してください。";
+
+          void requestPassword(message).then((password) => {
+            if (typeof password === "string") {
+              updatePassword(password);
+              return;
+            }
+
+            void loadingTask.destroy();
+            passwordCancelledRef.current = true;
+            resetState();
+            setLoadingMessage("");
+            setErrorMessage("パスワード入力をキャンセルしました");
+          });
+        };
         const doc = await loadingTask.promise;
         pdfDocumentRef.current = doc;
 
@@ -185,15 +295,22 @@ function App() {
         setStatusMessage("");
         setErrorMessage("");
       } catch (error) {
-        console.error(error);
-        setErrorMessage("PDFの読み込みに失敗しました");
-        resetState();
+        const isPasswordError =
+          passwordCancelledRef.current ||
+          (error instanceof Error && error.name === "PasswordException");
+
+        if (!isPasswordError) {
+          console.error(error);
+          setErrorMessage("PDFの読み込みに失敗しました");
+          resetState();
+        }
+        passwordCancelledRef.current = false;
       } finally {
         setLoadingMessage("");
         event.target.value = "";
       }
     },
-    [resetState],
+    [requestPassword, resetState],
   );
 
   useEffect(() => {
@@ -734,6 +851,41 @@ function App() {
             ))}
           </div>
         </section>
+      )}
+
+      {passwordPromptOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur">
+          <div className="w-full max-w-sm rounded-2xl border border-slate-700/70 bg-slate-900/90 p-6 shadow-2xl shadow-black/60">
+            <h3 className="text-lg font-semibold text-slate-100">PDFパスワード</h3>
+            <p className="mt-2 text-sm text-slate-300">{passwordPromptMessage}</p>
+            <input
+              ref={passwordInputRef}
+              type="password"
+              value={passwordValue}
+              onChange={handlePasswordInputChange}
+              onKeyDown={handlePasswordKeyDown}
+              className="mt-4 w-full rounded-xl border border-slate-700/60 bg-slate-950 px-4 py-2 text-sm text-slate-100 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+              placeholder="パスワード"
+            />
+            <div className="mt-5 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={handlePasswordCancel}
+                className="rounded-full border border-slate-600/70 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-500 hover:text-slate-100"
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={handlePasswordSubmit}
+                className="rounded-full bg-indigo-500 px-5 py-2 text-sm font-semibold text-white shadow shadow-indigo-900/50 transition hover:bg-indigo-400 disabled:opacity-60"
+                disabled={passwordValue.length === 0}
+              >
+                送信
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );
