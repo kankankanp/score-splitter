@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, useRef, type ChangeEvent, type FormEvent } from "react";
 import { uploadScore } from "./api/scoreClient";
 
 type UploadState = "idle" | "running";
@@ -9,6 +9,7 @@ function App() {
   const [statusMessage, setStatusMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [uploadState, setUploadState] = useState<UploadState>("idle");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0] ?? null;
@@ -39,20 +40,20 @@ function App() {
       setErrorMessage("");
       setTitle("");
       setFile(null);
-      event.currentTarget.reset();
+      // ファイル入力とフォームを安全にリセット
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      const form = event.currentTarget;
+      if (form) {
+        form.reset();
+      }
     } catch (error) {
-      const fallback = "アップロード中にエラーが発生しました";
       setStatusMessage("");
-      console.error("Upload failed:", error); // デバッグ用
-
-      if (error instanceof TypeError && error.message.includes("fetch")) {
-        setErrorMessage(
-          "サーバーに接続できませんでした。バックエンドが起動中か通信環境をご確認ください。"
-        );
-      } else if (error instanceof Error) {
+      if (error instanceof Error) {
         setErrorMessage(error.message);
       } else {
-        setErrorMessage(`${fallback}: ${String(error)}`);
+        setErrorMessage("アップロード中にエラーが発生しました");
       }
     } finally {
       setUploadState("idle");
@@ -91,6 +92,7 @@ function App() {
           <label className="flex flex-col gap-2 text-sm text-slate-200">
             <span className="font-semibold text-slate-100">PDFファイル</span>
             <input
+              ref={fileInputRef}
               type="file"
               accept="application/pdf"
               onChange={handleFileChange}

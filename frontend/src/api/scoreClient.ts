@@ -53,34 +53,19 @@ export async function uploadScore({
     headers: CONNECT_HEADERS,
     body: JSON.stringify({
       title,
-      pdf_file: pdfFile, // protobufのsnake_caseフィールド名を使用
+      pdf_file: pdfFile,
     }),
   });
 
-  if (!response.ok) {
-    let details = `HTTP ${response.status}`;
-    try {
-      const errorBody = await response.json();
-      if (
-        typeof errorBody?.message === "string" &&
-        errorBody.message.length > 0
-      ) {
-        details = errorBody.message;
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        details = `${details}: ${error.message}`;
-      }
-    }
-    throw new Error(`スコアのアップロードに失敗しました: ${details}`);
+  // レスポンスが2xx系ならば成功とみなす
+  if (response.ok) {
+    const data = await response.json();
+    return {
+      message: data.message || "アップロードが完了しました",
+      scoreId: data.scoreId || "",
+    };
   }
 
-  const data = (await response.json()) as {
-    message?: string;
-    scoreId?: string;
-  };
-  return {
-    message: data.message ?? "",
-    scoreId: data.scoreId ?? "",
-  };
+  // エラーの場合のみエラーを投げる
+  throw new Error(`アップロードに失敗しました (HTTP ${response.status})`);
 }
