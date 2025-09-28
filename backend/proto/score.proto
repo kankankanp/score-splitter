@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package score;
+
+option go_package = "score-splitter/backend/gen/go/score;score";
+
+service ScoreService {
+  rpc UploadScore(UploadScoreRequest) returns (UploadScoreResponse);
+}
+
+message UploadScoreRequest {
+  string title = 1;      // スコアのタイトル
+  bytes pdf_file = 2;    // PDFファイル本体
+}
+
+message UploadScoreResponse {
+  string message = 1;    // 結果メッセージ
+  string score_id = 2;   // 保存したスコアのIDなど
+}
