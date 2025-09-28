@@ -235,8 +235,10 @@ function App() {
       passwordCancelledRef.current = false;
 
       try {
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        setPdfBytes(bytes);
+        const arrayBuffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuffer);
+        const storedBytes = new Uint8Array(bytes);
+        setPdfBytes(storedBytes);
 
         const loadingTask = getDocument({ data: bytes });
         loadingTask.onPassword = (updatePassword: (arg0: string) => void, reason: number) => {

@@ -50,30 +50,41 @@ export type TrimScoreResponse = {
   pdfData: Uint8Array;
 };
 
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  let binary = "";
-  const bytes = new Uint8Array(buffer);
-  const chunkSize = 0x8000;
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    const chunk = bytes.subarray(index, index + chunkSize);
-    const chunkArray = Array.from(chunk);
-    binary += String.fromCharCode(...chunkArray);
+async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
+  if (buffer.byteLength === 0) {
+    return "";
   }
-  return btoa(binary);
+  return blobToBase64(new Blob([buffer]));
 }
 
-function uint8ArrayToBase64(bytes: Uint8Array): string {
+async function uint8ArrayToBase64(bytes: Uint8Array): Promise<string> {
   if (bytes.byteLength === 0) {
     return "";
   }
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    const chunk = bytes.subarray(index, index + chunkSize);
-    const chunkArray = Array.from(chunk);
-    binary += String.fromCharCode(...chunkArray);
-  }
-  return btoa(binary);
+  // Clone to avoid issues with detached buffers.
+  const copy = bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength
+    ? bytes
+    : new Uint8Array(bytes);
+  return blobToBase64(new Blob([copy.buffer.slice(copy.byteOffset, copy.byteOffset + copy.byteLength)]));
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === "string") {
+        const [, base64 = ""] = result.split(",");
+        resolve(base64);
+      } else {
+        resolve("");
+      }
+    };
+    reader.onerror = () => {
+      reject(reader.error ?? new Error("Base64変換に失敗しました"));
+    };
+    reader.readAsDataURL(blob);
+  });
 }
 
 function base64ToUint8Array(value: string): Uint8Array {
@@ -90,17 +101,19 @@ export async function uploadScore({
   file,
 }: UploadScoreParams): Promise<UploadScoreResponse> {
   const pdfBuffer = await file.arrayBuffer();
-  const pdfFile = arrayBufferToBase64(pdfBuffer);
+  const pdfFile = await arrayBufferToBase64(pdfBuffer);
+
+  const envelope = {
+    json: {
+      title,
+      pdfFile,
+    },
+  };
 
   const response = await fetch(UPLOAD_ENDPOINT, {
     method: "POST",
     headers: CONNECT_HEADERS,
-    body: JSON.stringify({
-      json: {
-        title,
-        pdfFile,
-      },
-    }),
+    body: JSON.stringify(envelope),
   });
 
   const text = await response.text();
@@ -142,7 +155,7 @@ export async function trimScore({
 
   const payload = {
     title,
-    pdfFile: uint8ArrayToBase64(pdfBytes),
+    pdfFile: await uint8ArrayToBase64(pdfBytes),
     areas: areas.map((area) => ({
       top: area.top,
       left: area.left,
@@ -155,16 +168,37 @@ export async function trimScore({
     console.error("PDF base64 is empty", {
       title,
       pdfBytesLength: pdfBytes.length,
-      pdfBytesSample: pdfBytes.slice(0, 16),
       areasCount: areas.length,
     });
     throw new Error("PDFの内容を読み取れませんでした");
   }
 
+  const envelope = {
+    json: {
+      ...payload,
+    },
+  };
+
+  if (import.meta.env.DEV) {
+    console.log("trimScore payload", {
+      pdfBytesLength: pdfBytes.length,
+      base64Length: payload.pdfFile.length,
+      areas: payload.areas.length,
+    });
+    console.log("trimScore request body sample", JSON.stringify(envelope).slice(0, 200));
+  }
+
+  if (import.meta.env.DEV) {
+    console.debug("trimScore request", {
+      base64Length: payload.pdfFile.length,
+      areas: payload.areas.length,
+    });
+  }
+
   const response = await fetch(TRIM_ENDPOINT, {
     method: "POST",
     headers: CONNECT_HEADERS,
-    body: JSON.stringify({ json: payload }),
+    body: JSON.stringify(envelope),
   });
 
   const text = await response.text();

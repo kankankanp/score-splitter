@@ -54,6 +54,8 @@ func (s *scoreService) TrimScore(
 ) (*connect.Response[score.TrimScoreResponse], error) {
 	_ = ctx
 
+	log.Printf("TrimScore request: title=%s pdfBytes=%d areas=%d", req.Msg.GetTitle(), len(req.Msg.GetPdfFile()), len(req.Msg.GetAreas()))
+
 	pdfBytes := req.Msg.GetPdfFile()
 	if len(pdfBytes) == 0 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("PDFファイルが空です"))
@@ -261,6 +263,20 @@ func corsMiddleware(next http.Handler) http.Handler {
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
 			return
+		}
+
+		if strings.Contains(r.URL.Path, "TrimScore") {
+			bodyBytes, err := io.ReadAll(r.Body)
+			if err == nil {
+				sample := string(bodyBytes)
+				if len(sample) > 256 {
+					sample = sample[:256]
+				}
+				log.Printf("TrimScore raw request: %s", sample)
+				r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+			} else {
+				log.Printf("TrimScore raw request read error: %v", err)
+			}
 		}
 
 		next.ServeHTTP(w, r)
