@@ -99,14 +99,29 @@ export async function uploadScore({
     }),
   });
 
-  if (!response.ok) {
-    throw new Error(`アップロードに失敗しました (HTTP ${response.status})`);
+  const text = await response.text();
+  let data: unknown = {};
+  if (text.trim().length > 0) {
+    try {
+      data = JSON.parse(text) as unknown;
+    } catch (error) {
+      console.error("Upload response parse error", error, text);
+    }
   }
 
-  const data = await response.json();
+  if (!response.ok) {
+    const message =
+      (data as { error?: { message?: string } })?.error?.message ||
+      (data as { message?: string })?.message;
+    throw new Error(
+      message ? `アップロードに失敗しました: ${message}` : `アップロードに失敗しました (HTTP ${response.status})`,
+    );
+  }
+
+  const body = data as { message?: string; scoreId?: string };
   return {
-    message: data.message || "アップロードが完了しました",
-    scoreId: data.scoreId || "",
+    message: body.message || "アップロードが完了しました",
+    scoreId: body.scoreId || "",
   };
 }
 
@@ -136,19 +151,39 @@ export async function trimScore({
     body: JSON.stringify(payload),
   });
 
-  if (!response.ok) {
-    throw new Error(`トリミングに失敗しました (HTTP ${response.status})`);
+  const text = await response.text();
+  let data: unknown = {};
+  if (text.trim().length > 0) {
+    try {
+      data = JSON.parse(text) as unknown;
+    } catch (error) {
+      console.error("Trim response parse error", error, text);
+    }
   }
 
-  const data = await response.json();
-  const base64 = data.trimmedPdf || data.trimmed_pdf;
+  if (!response.ok) {
+    const message =
+      (data as { error?: { message?: string } })?.error?.message ||
+      (data as { message?: string })?.message;
+    throw new Error(
+      message ? `トリミングに失敗しました: ${message}` : `トリミングに失敗しました (HTTP ${response.status})`,
+    );
+  }
+
+  const body = data as {
+    message?: string;
+    filename?: string;
+    trimmedPdf?: string;
+    trimmed_pdf?: string;
+  };
+  const base64 = body.trimmedPdf || body.trimmed_pdf;
   if (typeof base64 !== "string" || base64.length === 0) {
     throw new Error("生成されたPDFを取得できませんでした");
   }
 
   return {
-    message: data.message || "トリミングが完了しました",
-    filename: data.filename || "trimmed-score.pdf",
+    message: body.message || "トリミングが完了しました",
+    filename: body.filename || "trimmed-score.pdf",
     pdfData: base64ToUint8Array(base64),
   };
 }

@@ -239,7 +239,7 @@ function App() {
         setPdfBytes(bytes);
 
         const loadingTask = getDocument({ data: bytes });
-        loadingTask.onPassword = (updatePassword, reason) => {
+        loadingTask.onPassword = (updatePassword: (arg0: string) => void, reason: number) => {
           const message =
             reason === PasswordResponses.NEED_PASSWORD
               ? "このPDFはパスワードで保護されています。パスワードを入力してください。"
@@ -617,7 +617,17 @@ function App() {
         })),
       });
 
-      const blob = new Blob([response.pdfData], { type: "application/pdf" });
+      const sourceBuffer = response.pdfData.buffer;
+      const arrayBuffer =
+        response.pdfData.byteOffset === 0 &&
+        response.pdfData.byteLength === sourceBuffer.byteLength
+          ? (sourceBuffer as ArrayBuffer)
+          : (sourceBuffer.slice(
+              response.pdfData.byteOffset,
+              response.pdfData.byteOffset + response.pdfData.byteLength,
+            ) as ArrayBuffer);
+
+      const blob = new Blob([arrayBuffer], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
