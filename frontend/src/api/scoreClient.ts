@@ -95,7 +95,7 @@ export async function uploadScore({
     headers: CONNECT_HEADERS,
     body: JSON.stringify({
       title,
-      pdf_file: pdfFile,
+      pdfFile,
     }),
   });
 
@@ -121,7 +121,7 @@ export async function trimScore({
 
   const payload = {
     title,
-    pdf_file: uint8ArrayToBase64(pdfBytes),
+    pdfFile: uint8ArrayToBase64(pdfBytes),
     areas: areas.map((area) => ({
       top: area.top,
       left: area.left,
