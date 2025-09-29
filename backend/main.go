@@ -160,6 +160,9 @@ func buildTrimmedPDF(pdfBytes []byte, areas []normalizedArea, password string) (
 	if err != nil {
 		return nil, err
 	}
+	if err := ctx.EnsurePageCount(); err != nil {
+		return nil, err
+	}
 
 	if ctx.PageCount == 0 {
 		return nil, errors.New("PDFにページがありません")
@@ -249,6 +252,9 @@ func rectFromArea(pageBox *types.Rectangle, area normalizedArea) (*types.Rectang
 func extractTrimmedSegment(ctxSrc *model.Context, pageIndex int, rect *types.Rectangle) ([]byte, error) {
 	ctxPage, err := pdfcpu.ExtractPages(ctxSrc, []int{pageIndex}, false)
 	if err != nil {
+		return nil, err
+	}
+	if err := ctxPage.EnsurePageCount(); err != nil {
 		return nil, err
 	}
 
