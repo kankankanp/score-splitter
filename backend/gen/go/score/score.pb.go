@@ -198,6 +198,7 @@ type TrimScoreRequest struct {
 	Title         string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`                    // 生成するPDFのベース名
 	PdfFile       []byte                 `protobuf:"bytes,2,opt,name=pdf_file,json=pdfFile,proto3" json:"pdf_file,omitempty"` // 元のPDF
 	Areas         []*CropArea            `protobuf:"bytes,3,rep,name=areas,proto3" json:"areas,omitempty"`                    // トリミングエリア
+	Password      string                 `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`              // PDFのパスワード（必要な場合）
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -251,6 +252,13 @@ func (x *TrimScoreRequest) GetAreas() []*CropArea {
 		return x.Areas
 	}
 	return nil
+}
+
+func (x *TrimScoreRequest) GetPassword() string {
+	if x != nil {
+		return x.Password
+	}
+	return ""
 }
 
 type TrimScoreResponse struct {
@@ -328,11 +336,12 @@ const file_score_proto_rawDesc = "" +
 	"\x03top\x18\x01 \x01(\x01R\x03top\x12\x12\n" +
 	"\x04left\x18\x02 \x01(\x01R\x04left\x12\x14\n" +
 	"\x05width\x18\x03 \x01(\x01R\x05width\x12\x16\n" +
-	"\x06height\x18\x04 \x01(\x01R\x06height\"j\n" +
+	"\x06height\x18\x04 \x01(\x01R\x06height\"\x86\x01\n" +
 	"\x10TrimScoreRequest\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x19\n" +
 	"\bpdf_file\x18\x02 \x01(\fR\apdfFile\x12%\n" +
-	"\x05areas\x18\x03 \x03(\v2\x0f.score.CropAreaR\x05areas\"j\n" +
+	"\x05areas\x18\x03 \x03(\v2\x0f.score.CropAreaR\x05areas\x12\x1a\n" +
+	"\bpassword\x18\x04 \x01(\tR\bpassword\"j\n" +
 	"\x11TrimScoreResponse\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12\x1f\n" +
 	"\vtrimmed_pdf\x18\x02 \x01(\fR\n" +

@@ -30,6 +30,7 @@ message TrimScoreRequest {
   string title = 1;             // 生成するPDFのベース名
   bytes pdf_file = 2;           // 元のPDF
   repeated CropArea areas = 3;  // トリミングエリア
+  string password = 4;          // PDFのパスワード（必要な場合）
 }
 
 message TrimScoreResponse {

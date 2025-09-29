@@ -68,8 +68,11 @@ func (s *scoreService) TrimScore(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	trimmed, err := buildTrimmedPDF(pdfBytes, normalized)
+	trimmed, err := buildTrimmedPDF(pdfBytes, normalized, req.Msg.GetPassword())
 	if err != nil {
+		if errors.Is(err, pdfcpu.ErrWrongPassword) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("PDFのパスワードが正しくありません"))
+		}
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
@@ -143,12 +146,16 @@ func normalizeAreas(areas []*score.CropArea) ([]normalizedArea, error) {
 	return normalized, nil
 }
 
-func buildTrimmedPDF(pdfBytes []byte, areas []normalizedArea) ([]byte, error) {
+func buildTrimmedPDF(pdfBytes []byte, areas []normalizedArea, password string) ([]byte, error) {
 	if len(areas) == 0 {
 		return nil, errors.New("トリミングエリアがありません")
 	}
 
 	conf := model.NewDefaultConfiguration()
+	if password != "" {
+		conf.UserPW = password
+		conf.OwnerPW = password
+	}
 	ctx, err := pdfapi.ReadValidateAndOptimize(bytes.NewReader(pdfBytes), conf)
 	if err != nil {
 		return nil, err

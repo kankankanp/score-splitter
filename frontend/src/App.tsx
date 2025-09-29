@@ -121,6 +121,7 @@ function App() {
   const [passwordPromptMessage, setPasswordPromptMessage] =
     useState<string>("");
   const [passwordValue, setPasswordValue] = useState<string>("");
+  const [pdfPassword, setPdfPassword] = useState<string | null>(null);
 
   const pdfDocumentRef = useRef<PDFDocumentProxy | null>(null);
   const pageContainerRef = useRef<HTMLDivElement | null>(null);
@@ -149,6 +150,7 @@ function App() {
     setPasswordPromptOpen(false);
     setPasswordPromptMessage("");
     setPasswordValue("");
+    setPdfPassword(null);
   }, []);
 
   useEffect(() => {
@@ -249,6 +251,7 @@ function App() {
 
           void requestPassword(message).then((password) => {
             if (typeof password === "string") {
+              setPdfPassword(password);
               updatePassword(password);
               return;
             }
@@ -611,6 +614,7 @@ function App() {
       const response = await trimScore({
         title: baseTitle,
         pdfBytes,
+        password: pdfPassword ?? undefined,
         areas: sortedAreas.map((area) => ({
           top: area.top,
           left: area.left,
@@ -650,7 +654,7 @@ function App() {
     } finally {
       setGenerating(false);
     }
-  }, [pdfBytes, pdfName, sortedAreas]);
+  }, [pdfBytes, pdfName, sortedAreas, pdfPassword]);
 
   const canExport = pdfBytes !== null && sortedAreas.length > 0 && !generating;
 

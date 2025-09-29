@@ -42,6 +42,7 @@ export type TrimScoreParams = {
   title: string;
   pdfBytes: Uint8Array;
   areas: CropAreaPayload[];
+  password?: string | null;
 };
 
 export type TrimScoreResponse = {
@@ -147,12 +148,18 @@ export async function trimScore({
   title,
   pdfBytes,
   areas,
+  password,
 }: TrimScoreParams): Promise<TrimScoreResponse> {
   if (areas.length === 0) {
     throw new Error("トリミングエリアを指定してください");
   }
 
-  const payload = {
+  const payload: {
+    title: string;
+    pdfFile: string;
+    areas: CropAreaPayload[];
+    password?: string;
+  } = {
     title,
     pdfFile: await uint8ArrayToBase64(pdfBytes),
     areas: areas.map((area) => ({
@@ -162,6 +169,10 @@ export async function trimScore({
       height: area.height,
     })),
   };
+
+  if (password && password.length > 0) {
+    payload.password = password;
+  }
 
   if (payload.pdfFile.length === 0) {
     console.error("PDF base64 is empty", {
@@ -177,6 +188,7 @@ export async function trimScore({
       pdfBytesLength: pdfBytes.length,
       base64Length: payload.pdfFile.length,
       areas: payload.areas.length,
+      passwordIncluded: Boolean(payload.password),
     });
     console.log("trimScore request body sample", JSON.stringify(payload).slice(0, 200));
   }
