@@ -57,6 +57,9 @@ func (s *scoreService) TrimScore(
 	_ = ctx
 
 	log.Printf("TrimScore request: title=%s pdfBytes=%d areas=%d", req.Msg.GetTitle(), len(req.Msg.GetPdfFile()), len(req.Msg.GetAreas()))
+	if pages := req.Msg.GetIncludePages(); len(pages) > 0 {
+		log.Printf("TrimScore includePages: %v", pages)
+	}
 
 	pdfBytes := req.Msg.GetPdfFile()
 	if len(pdfBytes) == 0 {
@@ -68,7 +71,7 @@ func (s *scoreService) TrimScore(
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	trimmed, err := buildTrimmedPDF(pdfBytes, normalized, req.Msg.GetPassword())
+	trimmed, err := buildTrimmedPDF(pdfBytes, normalized, req.Msg.GetIncludePages(), req.Msg.GetPassword())
 	if err != nil {
 		if errors.Is(err, pdfcpu.ErrWrongPassword) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("PDFのパスワードが正しくありません"))
@@ -97,6 +100,41 @@ const minAreaSize = 0.01
 
 func clamp(value, min, max float64) float64 {
 	return math.Min(math.Max(value, min), max)
+}
+
+func resolvePagesToProcess(totalPages int, includePages []int32) ([]int, error) {
+	if totalPages <= 0 {
+		return nil, errors.New("PDFにページがありません")
+	}
+
+	if len(includePages) == 0 {
+		pages := make([]int, totalPages)
+		for i := 1; i <= totalPages; i++ {
+			pages[i-1] = i
+		}
+		return pages, nil
+	}
+
+	seen := make(map[int]struct{}, len(includePages))
+	pages := make([]int, 0, len(includePages))
+	for _, pageNum := range includePages {
+		pageIndex := int(pageNum)
+		if pageIndex < 1 || pageIndex > totalPages {
+			return nil, fmt.Errorf("含めるページ番号%vが範囲外です", pageNum)
+		}
+		if _, exists := seen[pageIndex]; exists {
+			continue
+		}
+		seen[pageIndex] = struct{}{}
+		pages = append(pages, pageIndex)
+	}
+
+	if len(pages) == 0 {
+		return nil, errors.New("有効なページがありません")
+	}
+
+	sort.Ints(pages)
+	return pages, nil
 }
 
 func normalizeAreas(areas []*score.CropArea) ([]normalizedArea, error) {
@@ -146,7 +184,7 @@ func normalizeAreas(areas []*score.CropArea) ([]normalizedArea, error) {
 	return normalized, nil
 }
 
-func buildTrimmedPDF(pdfBytes []byte, areas []normalizedArea, password string) ([]byte, error) {
+func buildTrimmedPDF(pdfBytes []byte, areas []normalizedArea, includePages []int32, password string) ([]byte, error) {
 	if len(areas) == 0 {
 		return nil, errors.New("トリミングエリアがありません")
 	}
@@ -168,9 +206,14 @@ func buildTrimmedPDF(pdfBytes []byte, areas []normalizedArea, password string) (
 		return nil, errors.New("PDFにページがありません")
 	}
 
+	pagesToProcess, err := resolvePagesToProcess(ctx.PageCount, includePages)
+	if err != nil {
+		return nil, err
+	}
+
 	var segments [][]byte
 
-	for pageIndex := 1; pageIndex <= ctx.PageCount; pageIndex++ {
+	for _, pageIndex := range pagesToProcess {
 		_, _, inh, err := ctx.PageDict(pageIndex, false)
 		if err != nil {
 			return nil, err

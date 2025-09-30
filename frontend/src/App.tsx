@@ -105,6 +105,7 @@ function App() {
   const [pdfName, setPdfName] = useState<string>("");
   const [pdfBytes, setPdfBytes] = useState<Uint8Array | null>(null);
   const [pdfPages, setPdfPages] = useState<PdfPagePreview[]>([]);
+  const [excludedPageNumbers, setExcludedPageNumbers] = useState<number[]>([]);
   const [selectedPageNumber, setSelectedPageNumber] = useState<number | null>(
     null,
   );
@@ -135,6 +136,7 @@ function App() {
     pdfDocumentRef.current = null;
     setPdfBytes(null);
     setPdfPages([]);
+    setExcludedPageNumbers([]);
     setSelectedPageNumber(null);
     setSelectedPageImage(null);
     setCropAreas([createDefaultArea()]);
@@ -241,6 +243,7 @@ function App() {
         const bytes = new Uint8Array(arrayBuffer);
         const storedBytes = new Uint8Array(bytes);
         setPdfBytes(storedBytes);
+        setExcludedPageNumbers([]);
 
         const loadingTask = getDocument({ data: bytes });
         loadingTask.onPassword = (updatePassword: (arg0: string) => void, reason: number) => {
@@ -371,7 +374,45 @@ function App() {
     };
   }, [selectedPageNumber, pdfBytes]);
 
+  const availablePages = useMemo(() => {
+    if (excludedPageNumbers.length === 0) {
+      return pdfPages;
+    }
+    const excludedSet = new Set(excludedPageNumbers);
+    return pdfPages.filter((page) => !excludedSet.has(page.pageNumber));
+  }, [pdfPages, excludedPageNumbers]);
+
+  const excludedPages = useMemo(() => {
+    if (excludedPageNumbers.length === 0) {
+      return [] as PdfPagePreview[];
+    }
+    const excludedSet = new Set(excludedPageNumbers);
+    return pdfPages.filter((page) => excludedSet.has(page.pageNumber));
+  }, [pdfPages, excludedPageNumbers]);
+
   const sortedAreas = useMemo(() => sortAreasByTop(cropAreas), [cropAreas]);
+
+  useEffect(() => {
+    if (availablePages.length === 0) {
+      if (selectedPageNumber !== null) {
+        setSelectedPageNumber(null);
+      }
+      return;
+    }
+    const firstPageNumber = availablePages[0]?.pageNumber ?? null;
+    if (selectedPageNumber === null) {
+      setSelectedPageNumber(firstPageNumber);
+      return;
+    }
+    const stillAvailable = availablePages.some(
+      (page) => page.pageNumber === selectedPageNumber,
+    );
+    if (!stillAvailable) {
+      setSelectedPageNumber(firstPageNumber);
+    }
+  }, [availablePages, selectedPageNumber]);
+
+  const availablePageCount = availablePages.length;
 
   const getRelativePosition = useCallback((event: ReactPointerEvent) => {
     if (!pageContainerRef.current) {
@@ -599,9 +640,49 @@ function App() {
     });
   }, [activeAreaId]);
 
+  const handleExcludePage = useCallback((pageNumber: number) => {
+    if (availablePageCount <= 1) {
+      setErrorMessage("トリミング対象は少なくとも1ページ必要です");
+      return;
+    }
+    let updated = false;
+    setExcludedPageNumbers((current) => {
+      if (current.includes(pageNumber)) {
+        return current;
+      }
+      updated = true;
+      return [...current, pageNumber];
+    });
+    if (updated) {
+      setErrorMessage("");
+      setStatusMessage("");
+    }
+  }, [availablePageCount]);
+
+  const handleRestorePage = useCallback((pageNumber: number) => {
+    let restored = false;
+    setExcludedPageNumbers((current) => {
+      if (!current.includes(pageNumber)) {
+        return current;
+      }
+      restored = true;
+      return current.filter((value) => value !== pageNumber);
+    });
+    if (restored) {
+      setErrorMessage("");
+      setStatusMessage("");
+    }
+  }, []);
+
   const handleExport = useCallback(async () => {
     if (!pdfBytes || sortedAreas.length === 0) {
       setErrorMessage("トリミングエリアを設定してください");
+      return;
+    }
+
+    const includePageNumbers = availablePages.map((page) => page.pageNumber);
+    if (includePageNumbers.length === 0) {
+      setErrorMessage("トリミング対象のページを選択してください");
       return;
     }
 
@@ -621,6 +702,7 @@ function App() {
           width: area.width,
           height: area.height,
         })),
+        includePages: includePageNumbers,
       });
 
       const sourceBuffer = response.pdfData.buffer;
@@ -654,9 +736,13 @@ function App() {
     } finally {
       setGenerating(false);
     }
-  }, [pdfBytes, pdfName, sortedAreas, pdfPassword]);
+  }, [availablePages, pdfBytes, pdfName, sortedAreas, pdfPassword]);
 
-  const canExport = pdfBytes !== null && sortedAreas.length > 0 && !generating;
+  const canExport =
+    pdfBytes !== null &&
+    sortedAreas.length > 0 &&
+    availablePages.length > 0 &&
+    !generating;
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10">
@@ -845,27 +931,63 @@ function App() {
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-slate-100">ページプレビュー</h2>
           <div className="flex gap-3 overflow-x-auto pb-2">
-            {pdfPages.map((page) => (
-              <button
-                key={page.pageNumber}
-                type="button"
-                onClick={() => setSelectedPageNumber(page.pageNumber)}
-                className={`flex flex-col items-center gap-2 rounded-2xl border px-3 pb-3 pt-2 text-xs transition ${
-                  page.pageNumber === selectedPageNumber
-                    ? "border-indigo-400/70 bg-indigo-500/10 text-indigo-100"
-                    : "border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-indigo-500/60 hover:text-indigo-200"
-                }`}
-              >
-                <img
-                  src={page.thumbnailUrl}
-                  alt={`サムネイル ${page.pageNumber}`}
-                  className="h-32 w-auto select-none rounded-xl border border-slate-700/50 object-contain"
-                  draggable={false}
-                />
-                <span>ページ {page.pageNumber}</span>
-              </button>
-            ))}
+            {availablePages.map((page) => {
+              const isSelected = page.pageNumber === selectedPageNumber;
+              return (
+                <div key={page.pageNumber} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPageNumber(page.pageNumber)}
+                    className={`flex min-w-[8rem] flex-col items-center gap-2 rounded-2xl border px-3 pb-3 pt-2 text-xs transition ${
+                      isSelected
+                        ? "border-indigo-400/70 bg-indigo-500/10 text-indigo-100"
+                        : "border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-indigo-500/60 hover:text-indigo-200"
+                    }`}
+                  >
+                    <img
+                      src={page.thumbnailUrl}
+                      alt={`サムネイル ${page.pageNumber}`}
+                      className="h-32 w-auto select-none rounded-xl border border-slate-700/50 object-contain"
+                      draggable={false}
+                    />
+                    <span>ページ {page.pageNumber}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      event.preventDefault();
+                      handleExcludePage(page.pageNumber);
+                    }}
+                    className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full border border-slate-600/60 bg-slate-900/80 text-sm text-slate-300 shadow shadow-slate-950/50 transition hover:border-rose-500/70 hover:text-rose-200"
+                    title={`ページ${page.pageNumber}を除外`}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
+            {availablePages.length === 0 && (
+              <div className="flex h-36 min-w-[16rem] items-center justify-center rounded-2xl border border-slate-700/60 bg-slate-900/60 px-4 text-xs text-slate-400">
+                すべてのページが除外されています
+              </div>
+            )}
           </div>
+          {excludedPages.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+              <span className="text-slate-400">除外したページ:</span>
+              {excludedPages.map((page) => (
+                <button
+                  key={`excluded-${page.pageNumber}`}
+                  type="button"
+                  onClick={() => handleRestorePage(page.pageNumber)}
+                  className="rounded-full border border-slate-600/60 px-3 py-1 text-xs text-slate-200 transition hover:border-emerald-500/60 hover:text-emerald-200"
+                >
+                  ページ {page.pageNumber} を戻す
+                </button>
+              ))}
+            </div>
+          )}
         </section>
       )}
 

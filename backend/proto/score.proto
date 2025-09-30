@@ -31,6 +31,7 @@ message TrimScoreRequest {
   bytes pdf_file = 2;           // 元のPDF
   repeated CropArea areas = 3;  // トリミングエリア
   string password = 4;          // PDFのパスワード（必要な場合）
+  repeated int32 include_pages = 5; // トリミング対象に含めるページ番号（1始まり）
 }
 
 message TrimScoreResponse {
