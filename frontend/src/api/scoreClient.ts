@@ -38,12 +38,18 @@ export type CropAreaPayload = {
   height: number;
 };
 
+export type PageTrimSettingPayload = {
+  pageNumber: number;
+  areas: CropAreaPayload[];
+};
+
 export type TrimScoreParams = {
   title: string;
   pdfBytes: Uint8Array;
   areas: CropAreaPayload[];
   password?: string | null;
   includePages?: number[];
+  pageSettings?: PageTrimSettingPayload[];
 };
 
 export type TrimScoreResponse = {
@@ -151,6 +157,7 @@ export async function trimScore({
   areas,
   password,
   includePages,
+  pageSettings,
 }: TrimScoreParams): Promise<TrimScoreResponse> {
   if (areas.length === 0) {
     throw new Error("トリミングエリアを指定してください");
@@ -162,6 +169,7 @@ export async function trimScore({
     areas: CropAreaPayload[];
     password?: string;
     includePages?: number[];
+    pageSettings?: PageTrimSettingPayload[];
   } = {
     title,
     pdfFile: await uint8ArrayToBase64(pdfBytes),
@@ -181,6 +189,18 @@ export async function trimScore({
     payload.includePages = includePages;
   }
 
+  if (pageSettings && pageSettings.length > 0) {
+    payload.pageSettings = pageSettings.map((setting) => ({
+      pageNumber: setting.pageNumber,
+      areas: setting.areas.map((area) => ({
+        top: area.top,
+        left: area.left,
+        width: area.width,
+        height: area.height,
+      })),
+    }));
+  }
+
   if (payload.pdfFile.length === 0) {
     console.error("PDF base64 is empty", {
       title,
@@ -197,6 +217,7 @@ export async function trimScore({
       areas: payload.areas.length,
       passwordIncluded: Boolean(payload.password),
       includePages: payload.includePages?.length ?? 0,
+      pageSettings: payload.pageSettings?.length ?? 0,
     });
     console.log("trimScore request body sample", JSON.stringify(payload).slice(0, 200));
   }
@@ -206,6 +227,7 @@ export async function trimScore({
       base64Length: payload.pdfFile.length,
       areas: payload.areas.length,
       includePages: payload.includePages?.length ?? 0,
+      pageSettings: payload.pageSettings?.length ?? 0,
     });
   }
 

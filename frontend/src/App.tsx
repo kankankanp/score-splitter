@@ -101,6 +101,13 @@ function sortAreasByTop(areas: CropArea[]): CropArea[] {
   return [...areas].sort((a, b) => a.top - b.top || a.left - b.left);
 }
 
+function cloneAreasWithNewIds(areas: CropArea[]): CropArea[] {
+  return areas.map((area) => ({
+    ...area,
+    id: crypto.randomUUID(),
+  }));
+}
+
 function App() {
   const [pdfName, setPdfName] = useState<string>("");
   const [pdfBytes, setPdfBytes] = useState<Uint8Array | null>(null);
@@ -111,7 +118,12 @@ function App() {
   );
   const [selectedPageImage, setSelectedPageImage] =
     useState<SelectedPageImage | null>(null);
-  const [cropAreas, setCropAreas] = useState<CropArea[]>([createDefaultArea()]);
+  const [globalAreas, setGlobalAreas] = useState<CropArea[]>([
+    createDefaultArea(),
+  ]);
+  const [pageSpecificAreas, setPageSpecificAreas] = useState<
+    Record<number, CropArea[]>
+  >({});
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState<string>("");
   const [renderingPage, setRenderingPage] = useState<boolean>(false);
@@ -139,7 +151,8 @@ function App() {
     setExcludedPageNumbers([]);
     setSelectedPageNumber(null);
     setSelectedPageImage(null);
-    setCropAreas([createDefaultArea()]);
+    setGlobalAreas([createDefaultArea()]);
+    setPageSpecificAreas({});
     setActiveAreaId(null);
     setStatusMessage("");
     setErrorMessage("");
@@ -298,7 +311,8 @@ function App() {
         setPdfPages(previews);
         setSelectedPageNumber(previews[0]?.pageNumber ?? null);
         const initialArea = createDefaultArea();
-        setCropAreas([initialArea]);
+        setGlobalAreas([initialArea]);
+        setPageSpecificAreas({});
         setActiveAreaId(initialArea.id);
         setStatusMessage("");
         setErrorMessage("");
@@ -390,7 +404,52 @@ function App() {
     return pdfPages.filter((page) => excludedSet.has(page.pageNumber));
   }, [pdfPages, excludedPageNumbers]);
 
-  const sortedAreas = useMemo(() => sortAreasByTop(cropAreas), [cropAreas]);
+  const selectedPageHasSpecific = useMemo(() => {
+    if (selectedPageNumber === null) {
+      return false;
+    }
+    return Boolean(pageSpecificAreas[selectedPageNumber]);
+  }, [pageSpecificAreas, selectedPageNumber]);
+
+  const currentAreas = useMemo(() => {
+    if (selectedPageNumber !== null) {
+      const override = pageSpecificAreas[selectedPageNumber];
+      if (override) {
+        return override;
+      }
+    }
+    return globalAreas;
+  }, [globalAreas, pageSpecificAreas, selectedPageNumber]);
+
+  const sortedAreas = useMemo(() => sortAreasByTop(currentAreas), [currentAreas]);
+
+  const mutateCurrentAreas = useCallback(
+    (updater: (areas: CropArea[]) => CropArea[]) => {
+      if (selectedPageHasSpecific && selectedPageNumber !== null) {
+        setPageSpecificAreas((current) => {
+          const existing = current[selectedPageNumber] ?? [];
+          const nextAreas = updater(existing);
+          return {
+            ...current,
+            [selectedPageNumber]: nextAreas,
+          };
+        });
+        return;
+      }
+      setGlobalAreas((current) => updater(current));
+    },
+    [selectedPageHasSpecific, selectedPageNumber],
+  );
+
+  useEffect(() => {
+    if (currentAreas.length === 0) {
+      setActiveAreaId(null);
+      return;
+    }
+    if (!currentAreas.some((area) => area.id === activeAreaId)) {
+      setActiveAreaId(currentAreas[0].id);
+    }
+  }, [activeAreaId, currentAreas]);
 
   useEffect(() => {
     if (availablePages.length === 0) {
@@ -424,13 +483,16 @@ function App() {
     return { x, y };
   }, []);
 
-  const updateArea = useCallback((areaId: string, updater: (current: CropArea) => CropArea) => {
-    setCropAreas((current) =>
-      current.map((area) =>
-        area.id === areaId ? clampArea(updater(area)) : area,
-      ),
-    );
-  }, []);
+  const updateArea = useCallback(
+    (areaId: string, updater: (current: CropArea) => CropArea) => {
+      mutateCurrentAreas((areas) =>
+        areas.map((area) =>
+          area.id === areaId ? clampArea(updater(area)) : area,
+        ),
+      );
+    },
+    [mutateCurrentAreas],
+  );
 
   const handleContainerPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -452,7 +514,7 @@ function App() {
         width: MIN_AREA_SIZE,
         height: MIN_AREA_SIZE,
       });
-      setCropAreas((current) => [...current, initialArea]);
+      mutateCurrentAreas((areas) => [...areas, initialArea]);
       setActiveAreaId(newAreaId);
       interactionRef.current = {
         type: "creating",
@@ -463,7 +525,7 @@ function App() {
       pageContainerRef.current.setPointerCapture(event.pointerId);
       event.preventDefault();
     },
-    [getRelativePosition, selectedPageImage],
+    [getRelativePosition, mutateCurrentAreas, selectedPageImage],
   );
 
   const handleAreaPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>, area: CropArea) => {
@@ -597,14 +659,16 @@ function App() {
       const interaction = interactionRef.current;
       if (interaction) {
         if (interaction.type === "creating") {
-          const createdArea = cropAreas.find((area) => area.id === interaction.areaId);
+          const createdArea = currentAreas.find(
+            (area) => area.id === interaction.areaId,
+          );
           if (
             createdArea &&
             (createdArea.width <= MIN_AREA_SIZE * 1.1 ||
               createdArea.height <= MIN_AREA_SIZE * 1.1)
           ) {
-            setCropAreas((current) =>
-              current.filter((area) => area.id !== interaction.areaId),
+            mutateCurrentAreas((areas) =>
+              areas.filter((area) => area.id !== interaction.areaId),
             );
             setActiveAreaId(null);
           }
@@ -615,30 +679,74 @@ function App() {
         pageContainerRef.current.releasePointerCapture(event.pointerId);
       }
     },
-    [cropAreas],
+    [currentAreas, mutateCurrentAreas],
   );
 
   const handleAddArea = useCallback(() => {
     const next = createDefaultArea();
-    setCropAreas((current) => [...current, next]);
+    mutateCurrentAreas((areas) => [...areas, next]);
     setActiveAreaId(next.id);
-  }, []);
+  }, [mutateCurrentAreas]);
 
   const handleRemoveArea = useCallback((areaId: string) => {
-    setCropAreas((current) => {
-      if (current.length <= 1) {
-        return current;
-      }
-      const filtered = current.filter((area) => area.id !== areaId);
-      if (filtered.length === 0) {
-        return current;
-      }
+    if (currentAreas.length <= 1) {
+      return;
+    }
+    const filtered = currentAreas.filter((area) => area.id !== areaId);
+    if (filtered.length === currentAreas.length) {
+      return;
+    }
+    mutateCurrentAreas(() => filtered);
+    if (filtered.length > 0) {
       if (activeAreaId === areaId) {
         setActiveAreaId(filtered[0].id);
       }
-      return filtered;
+    } else {
+      setActiveAreaId(null);
+    }
+  }, [activeAreaId, currentAreas, mutateCurrentAreas]);
+
+  const handleEnablePageSpecific = useCallback(() => {
+    if (selectedPageNumber === null) {
+      return;
+    }
+    let createdAreas: CropArea[] | undefined;
+    setPageSpecificAreas((current) => {
+      if (current[selectedPageNumber]) {
+        createdAreas = current[selectedPageNumber];
+        return current;
+      }
+      const cloned = cloneAreasWithNewIds(globalAreas);
+      createdAreas = cloned;
+      return {
+        ...current,
+        [selectedPageNumber]: cloned,
+      };
     });
-  }, [activeAreaId]);
+    interactionRef.current = null;
+    if (createdAreas && createdAreas.length > 0) {
+      setActiveAreaId(createdAreas[0].id);
+    }
+  }, [globalAreas, selectedPageNumber]);
+
+  const handleDisablePageSpecific = useCallback(() => {
+    if (selectedPageNumber === null) {
+      return;
+    }
+    setPageSpecificAreas((current) => {
+      if (!current[selectedPageNumber]) {
+        return current;
+      }
+      const { [selectedPageNumber]: _removed, ...rest } = current;
+      return rest;
+    });
+    interactionRef.current = null;
+    if (globalAreas.length > 0) {
+      setActiveAreaId(globalAreas[0].id);
+    } else {
+      setActiveAreaId(null);
+    }
+  }, [globalAreas, selectedPageNumber]);
 
   const handleExcludePage = useCallback((pageNumber: number) => {
     if (availablePageCount <= 1) {
@@ -675,7 +783,11 @@ function App() {
   }, []);
 
   const handleExport = useCallback(async () => {
-    if (!pdfBytes || sortedAreas.length === 0) {
+    const hasDefaultAreas = globalAreas.length > 0;
+    const hasPageOverrides = Object.values(pageSpecificAreas).some(
+      (areas) => areas.length > 0,
+    );
+    if (!pdfBytes || (!hasDefaultAreas && !hasPageOverrides)) {
       setErrorMessage("トリミングエリアを設定してください");
       return;
     }
@@ -686,23 +798,58 @@ function App() {
       return;
     }
 
+    const includePageSet = new Set(includePageNumbers);
+    const defaultAreasForPayload = sortAreasByTop(globalAreas);
+
+    const pagesRequiringDefault = includePageNumbers.filter(
+      (pageNumber) => !pageSpecificAreas[pageNumber],
+    );
+    if (pagesRequiringDefault.length > 0 && defaultAreasForPayload.length === 0) {
+      setErrorMessage("共通のトリミングエリアを設定してください");
+      return;
+    }
+
+    for (const [pageKey, areas] of Object.entries(pageSpecificAreas)) {
+      const pageNumber = Number(pageKey);
+      if (includePageSet.has(pageNumber) && areas.length === 0) {
+        setErrorMessage(`ページ${pageNumber}のトリミングエリアを設定してください`);
+        return;
+      }
+    }
+
     setErrorMessage("");
     setStatusMessage("");
     setGenerating(true);
 
     try {
       const baseTitle = pdfName.replace(/\.pdf$/i, "") || "trimmed-score";
+      const pageSettingsPayload = Object.entries(pageSpecificAreas)
+        .filter(([pageKey, areas]) => {
+          const pageNumber = Number(pageKey);
+          return includePageSet.has(pageNumber) && areas.length > 0;
+        })
+        .map(([pageKey, areas]) => ({
+          pageNumber: Number(pageKey),
+          areas: sortAreasByTop(areas).map((area) => ({
+            top: area.top,
+            left: area.left,
+            width: area.width,
+            height: area.height,
+          })),
+        }));
+
       const response = await trimScore({
         title: baseTitle,
         pdfBytes,
         password: pdfPassword ?? undefined,
-        areas: sortedAreas.map((area) => ({
+        areas: defaultAreasForPayload.map((area) => ({
           top: area.top,
           left: area.left,
           width: area.width,
           height: area.height,
         })),
         includePages: includePageNumbers,
+        pageSettings: pageSettingsPayload,
       });
 
       const sourceBuffer = response.pdfData.buffer;
@@ -736,13 +883,21 @@ function App() {
     } finally {
       setGenerating(false);
     }
-  }, [availablePages, pdfBytes, pdfName, sortedAreas, pdfPassword]);
+  }, [
+    availablePages,
+    globalAreas,
+    pageSpecificAreas,
+    pdfBytes,
+    pdfName,
+    pdfPassword,
+  ]);
 
   const canExport =
     pdfBytes !== null &&
-    sortedAreas.length > 0 &&
     availablePages.length > 0 &&
-    !generating;
+    !generating &&
+    (globalAreas.length > 0 ||
+      Object.values(pageSpecificAreas).some((areas) => areas.length > 0));
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10">
@@ -804,6 +959,34 @@ function App() {
             <p className="text-xs text-slate-400">
               プレビュー内をドラッグしてエリアを追加できます。エリア枠をドラッグして移動・リサイズしてください。
             </p>
+            {selectedPageNumber !== null && (
+              <div className="flex items-center justify-between rounded-2xl border border-slate-700/60 bg-slate-900/50 px-4 py-2 text-xs text-slate-300">
+                <span>
+                  {selectedPageHasSpecific
+                    ? `ページ${selectedPageNumber}専用の設定を編集中`
+                    : "共通設定を編集中"}
+                </span>
+                <div className="flex gap-2">
+                  {selectedPageHasSpecific ? (
+                    <button
+                      type="button"
+                      onClick={handleDisablePageSpecific}
+                      className="rounded-full border border-slate-600/60 px-3 py-1 text-xs font-medium text-slate-200 transition hover:border-emerald-500/60 hover:text-emerald-200"
+                    >
+                      共通設定に戻す
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleEnablePageSpecific}
+                      className="rounded-full border border-indigo-500/60 px-3 py-1 text-xs font-medium text-indigo-200 transition hover:bg-indigo-500/20"
+                    >
+                      このページ専用にする
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
             <div
               ref={pageContainerRef}
               className="relative overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-950/40"
@@ -821,7 +1004,7 @@ function App() {
                     draggable={false}
                   />
                   <div className="pointer-events-none absolute inset-0">
-                    {cropAreas.map((area) => {
+                    {currentAreas.map((area) => {
                       const isActive = area.id === activeAreaId;
                       return (
                         <div
@@ -908,7 +1091,7 @@ function App() {
                     type="button"
                     className="rounded-full border border-slate-600/60 px-3 py-1 text-xs text-slate-300 transition hover:border-rose-400/70 hover:text-rose-200 disabled:opacity-40"
                     onClick={() => handleRemoveArea(area.id)}
-                    disabled={cropAreas.length <= 1}
+                    disabled={currentAreas.length <= 1}
                   >
                     削除
                   </button>

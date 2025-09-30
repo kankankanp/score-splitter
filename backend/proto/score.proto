@@ -26,12 +26,18 @@ message CropArea {
   double height = 4;     // 高さ (0.0 - 1.0)
 }
 
+message PageTrimSetting {
+  int32 page_number = 1;         // 対象ページ番号 (1始まり)
+  repeated CropArea areas = 2;   // ページごとのトリミングエリア
+}
+
 message TrimScoreRequest {
   string title = 1;             // 生成するPDFのベース名
   bytes pdf_file = 2;           // 元のPDF
   repeated CropArea areas = 3;  // トリミングエリア
   string password = 4;          // PDFのパスワード（必要な場合）
   repeated int32 include_pages = 5; // トリミング対象に含めるページ番号（1始まり）
+  repeated PageTrimSetting page_settings = 6; // ページごとのトリミング設定
 }
 
 message TrimScoreResponse {

@@ -56,7 +56,13 @@ func (s *scoreService) TrimScore(
 ) (*connect.Response[score.TrimScoreResponse], error) {
 	_ = ctx
 
-	log.Printf("TrimScore request: title=%s pdfBytes=%d areas=%d", req.Msg.GetTitle(), len(req.Msg.GetPdfFile()), len(req.Msg.GetAreas()))
+	log.Printf(
+		"TrimScore request: title=%s pdfBytes=%d areas=%d pageSettings=%d",
+		req.Msg.GetTitle(),
+		len(req.Msg.GetPdfFile()),
+		len(req.Msg.GetAreas()),
+		len(req.Msg.GetPageSettings()),
+	)
 	if pages := req.Msg.GetIncludePages(); len(pages) > 0 {
 		log.Printf("TrimScore includePages: %v", pages)
 	}
@@ -66,12 +72,41 @@ func (s *scoreService) TrimScore(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("PDFファイルが空です"))
 	}
 
-	normalized, err := normalizeAreas(req.Msg.GetAreas())
+	defaultAreas, err := normalizeAreas(req.Msg.GetAreas())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	trimmed, err := buildTrimmedPDF(pdfBytes, normalized, req.Msg.GetIncludePages(), req.Msg.GetPassword())
+	pageOverrides := make(map[int][]normalizedArea)
+	for _, setting := range req.Msg.GetPageSettings() {
+		if setting == nil {
+			continue
+		}
+		pageNumber := int(setting.GetPageNumber())
+		if pageNumber < 1 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("ページ番号%vが無効です", setting.GetPageNumber()))
+		}
+		normalizedOverride, errNormalize := normalizeAreas(setting.GetAreas())
+		if errNormalize != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errNormalize)
+		}
+		if len(normalizedOverride) == 0 {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("ページ%vのトリミングエリアがありません", pageNumber))
+		}
+		pageOverrides[pageNumber] = normalizedOverride
+	}
+
+	if len(defaultAreas) == 0 && len(pageOverrides) == 0 {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("トリミングエリアがありません"))
+	}
+
+	trimmed, err := buildTrimmedPDF(
+		pdfBytes,
+		defaultAreas,
+		req.Msg.GetIncludePages(),
+		req.Msg.GetPassword(),
+		pageOverrides,
+	)
 	if err != nil {
 		if errors.Is(err, pdfcpu.ErrWrongPassword) {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("PDFのパスワードが正しくありません"))
@@ -139,7 +174,7 @@ func resolvePagesToProcess(totalPages int, includePages []int32) ([]int, error) 
 
 func normalizeAreas(areas []*score.CropArea) ([]normalizedArea, error) {
 	if len(areas) == 0 {
-		return nil, errors.New("トリミングエリアがありません")
+		return nil, nil
 	}
 
 	normalized := make([]normalizedArea, 0, len(areas))
@@ -184,8 +219,14 @@ func normalizeAreas(areas []*score.CropArea) ([]normalizedArea, error) {
 	return normalized, nil
 }
 
-func buildTrimmedPDF(pdfBytes []byte, areas []normalizedArea, includePages []int32, password string) ([]byte, error) {
-	if len(areas) == 0 {
+func buildTrimmedPDF(
+	pdfBytes []byte,
+	defaultAreas []normalizedArea,
+	includePages []int32,
+	password string,
+	pageOverrides map[int][]normalizedArea,
+) ([]byte, error) {
+	if len(defaultAreas) == 0 && len(pageOverrides) == 0 {
 		return nil, errors.New("トリミングエリアがありません")
 	}
 
@@ -211,9 +252,23 @@ func buildTrimmedPDF(pdfBytes []byte, areas []normalizedArea, includePages []int
 		return nil, err
 	}
 
+	for pageNumber := range pageOverrides {
+		if pageNumber < 1 || pageNumber > ctx.PageCount {
+			return nil, fmt.Errorf("ページ%vの設定がPDFの範囲外です", pageNumber)
+		}
+	}
+
 	var segments [][]byte
 
 	for _, pageIndex := range pagesToProcess {
+		areasForPage := pageOverrides[pageIndex]
+		if len(areasForPage) == 0 {
+			areasForPage = defaultAreas
+		}
+		if len(areasForPage) == 0 {
+			return nil, fmt.Errorf("ページ%vのトリミングエリアがありません", pageIndex)
+		}
+
 		_, _, inh, err := ctx.PageDict(pageIndex, false)
 		if err != nil {
 			return nil, err
@@ -227,7 +282,7 @@ func buildTrimmedPDF(pdfBytes []byte, areas []normalizedArea, includePages []int
 			return nil, fmt.Errorf("ページ%vのサイズ情報を取得できません", pageIndex)
 		}
 
-		for _, area := range areas {
+		for _, area := range areasForPage {
 			rect, err := rectFromArea(cropBox, area)
 			if err != nil {
 				return nil, err
