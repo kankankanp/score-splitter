@@ -1541,7 +1541,7 @@ function PracticeMode({ pdfData, title, filename, onExit }: PracticeModeProps) {
           )}
           <div className="flex flex-1 flex-col gap-4 overflow-hidden">
             {selectedVideo ? (
-              <div className="aspect-video w-full overflow-hidden rounded-2xl border border-slate-700/60 bg-black">
+              <div className="aspect-video w-full max-w-3xl self-center overflow-hidden rounded-2xl border border-slate-700/60 bg-black">
                 <iframe
                   key={selectedVideo.videoId}
                   src={videoSrc}
