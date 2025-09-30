@@ -7,6 +7,7 @@ option go_package = "score-splitter/backend/gen/go/score;score";
 service ScoreService {
   rpc UploadScore(UploadScoreRequest) returns (UploadScoreResponse);
   rpc TrimScore(TrimScoreRequest) returns (TrimScoreResponse);
+  rpc SearchYoutubeVideos(SearchYoutubeVideosRequest) returns (SearchYoutubeVideosResponse);
 }
 
 message UploadScoreRequest {
@@ -44,4 +45,18 @@ message TrimScoreResponse {
   string message = 1;       // 結果メッセージ
   bytes trimmed_pdf = 2;    // 生成したPDF
   string filename = 3;      // 推奨ファイル名
+}
+
+message SearchYoutubeVideosRequest {
+  string query = 1; // 検索キーワード
+}
+
+message YoutubeVideo {
+  string video_id = 1;
+  string title = 2;
+  string thumbnail_url = 3;
+}
+
+message SearchYoutubeVideosResponse {
+  repeated YoutubeVideo videos = 1;
 }

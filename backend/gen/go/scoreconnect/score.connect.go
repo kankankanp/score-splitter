@@ -38,12 +38,16 @@ const (
 	ScoreServiceUploadScoreProcedure = "/score.ScoreService/UploadScore"
 	// ScoreServiceTrimScoreProcedure is the fully-qualified name of the ScoreService's TrimScore RPC.
 	ScoreServiceTrimScoreProcedure = "/score.ScoreService/TrimScore"
+	// ScoreServiceSearchYoutubeVideosProcedure is the fully-qualified name of the ScoreService's
+	// SearchYoutubeVideos RPC.
+	ScoreServiceSearchYoutubeVideosProcedure = "/score.ScoreService/SearchYoutubeVideos"
 )
 
 // ScoreServiceClient is a client for the score.ScoreService service.
 type ScoreServiceClient interface {
 	UploadScore(context.Context, *connect.Request[score.UploadScoreRequest]) (*connect.Response[score.UploadScoreResponse], error)
 	TrimScore(context.Context, *connect.Request[score.TrimScoreRequest]) (*connect.Response[score.TrimScoreResponse], error)
+	SearchYoutubeVideos(context.Context, *connect.Request[score.SearchYoutubeVideosRequest]) (*connect.Response[score.SearchYoutubeVideosResponse], error)
 }
 
 // NewScoreServiceClient constructs a client for the score.ScoreService service. By default, it uses
@@ -69,13 +73,20 @@ func NewScoreServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(scoreServiceMethods.ByName("TrimScore")),
 			connect.WithClientOptions(opts...),
 		),
+		searchYoutubeVideos: connect.NewClient[score.SearchYoutubeVideosRequest, score.SearchYoutubeVideosResponse](
+			httpClient,
+			baseURL+ScoreServiceSearchYoutubeVideosProcedure,
+			connect.WithSchema(scoreServiceMethods.ByName("SearchYoutubeVideos")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // scoreServiceClient implements ScoreServiceClient.
 type scoreServiceClient struct {
-	uploadScore *connect.Client[score.UploadScoreRequest, score.UploadScoreResponse]
-	trimScore   *connect.Client[score.TrimScoreRequest, score.TrimScoreResponse]
+	uploadScore         *connect.Client[score.UploadScoreRequest, score.UploadScoreResponse]
+	trimScore           *connect.Client[score.TrimScoreRequest, score.TrimScoreResponse]
+	searchYoutubeVideos *connect.Client[score.SearchYoutubeVideosRequest, score.SearchYoutubeVideosResponse]
 }
 
 // UploadScore calls score.ScoreService.UploadScore.
@@ -88,10 +99,16 @@ func (c *scoreServiceClient) TrimScore(ctx context.Context, req *connect.Request
 	return c.trimScore.CallUnary(ctx, req)
 }
 
+// SearchYoutubeVideos calls score.ScoreService.SearchYoutubeVideos.
+func (c *scoreServiceClient) SearchYoutubeVideos(ctx context.Context, req *connect.Request[score.SearchYoutubeVideosRequest]) (*connect.Response[score.SearchYoutubeVideosResponse], error) {
+	return c.searchYoutubeVideos.CallUnary(ctx, req)
+}
+
 // ScoreServiceHandler is an implementation of the score.ScoreService service.
 type ScoreServiceHandler interface {
 	UploadScore(context.Context, *connect.Request[score.UploadScoreRequest]) (*connect.Response[score.UploadScoreResponse], error)
 	TrimScore(context.Context, *connect.Request[score.TrimScoreRequest]) (*connect.Response[score.TrimScoreResponse], error)
+	SearchYoutubeVideos(context.Context, *connect.Request[score.SearchYoutubeVideosRequest]) (*connect.Response[score.SearchYoutubeVideosResponse], error)
 }
 
 // NewScoreServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -113,12 +130,20 @@ func NewScoreServiceHandler(svc ScoreServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(scoreServiceMethods.ByName("TrimScore")),
 		connect.WithHandlerOptions(opts...),
 	)
+	scoreServiceSearchYoutubeVideosHandler := connect.NewUnaryHandler(
+		ScoreServiceSearchYoutubeVideosProcedure,
+		svc.SearchYoutubeVideos,
+		connect.WithSchema(scoreServiceMethods.ByName("SearchYoutubeVideos")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/score.ScoreService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ScoreServiceUploadScoreProcedure:
 			scoreServiceUploadScoreHandler.ServeHTTP(w, r)
 		case ScoreServiceTrimScoreProcedure:
 			scoreServiceTrimScoreHandler.ServeHTTP(w, r)
+		case ScoreServiceSearchYoutubeVideosProcedure:
+			scoreServiceSearchYoutubeVideosHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -134,4 +159,8 @@ func (UnimplementedScoreServiceHandler) UploadScore(context.Context, *connect.Re
 
 func (UnimplementedScoreServiceHandler) TrimScore(context.Context, *connect.Request[score.TrimScoreRequest]) (*connect.Response[score.TrimScoreResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("score.ScoreService.TrimScore is not implemented"))
+}
+
+func (UnimplementedScoreServiceHandler) SearchYoutubeVideos(context.Context, *connect.Request[score.SearchYoutubeVideosRequest]) (*connect.Response[score.SearchYoutubeVideosResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("score.ScoreService.SearchYoutubeVideos is not implemented"))
 }

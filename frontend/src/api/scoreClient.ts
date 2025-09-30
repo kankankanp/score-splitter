@@ -20,6 +20,7 @@ function resolveBaseUrl(): string {
 const baseUrl = resolveBaseUrl();
 const UPLOAD_ENDPOINT = `${baseUrl}/score.ScoreService/UploadScore`;
 const TRIM_ENDPOINT = `${baseUrl}/score.ScoreService/TrimScore`;
+const SEARCH_YOUTUBE_ENDPOINT = `${baseUrl}/score.ScoreService/SearchYoutubeVideos`;
 
 export type UploadScoreParams = {
   title: string;
@@ -56,6 +57,12 @@ export type TrimScoreResponse = {
   message: string;
   filename: string;
   pdfData: Uint8Array;
+};
+
+export type YoutubeVideo = {
+  videoId: string;
+  title: string;
+  thumbnailUrl: string;
 };
 
 async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
@@ -159,7 +166,7 @@ export async function trimScore({
   includePages,
   pageSettings,
 }: TrimScoreParams): Promise<TrimScoreResponse> {
-  if (areas.length === 0) {
+  if (areas.length === 0 && (!pageSettings || pageSettings.length === 0)) {
     throw new Error("トリミングエリアを指定してください");
   }
 
@@ -272,4 +279,67 @@ export async function trimScore({
     filename: body.filename || "trimmed-score.pdf",
     pdfData: base64ToUint8Array(base64),
   };
+}
+
+export async function searchYoutubeVideos(query: string): Promise<YoutubeVideo[]> {
+  const trimmed = query.trim();
+  if (trimmed.length === 0) {
+    throw new Error("検索キーワードを入力してください");
+  }
+
+  const payload = {
+    query: trimmed,
+  };
+
+  const response = await fetch(SEARCH_YOUTUBE_ENDPOINT, {
+    method: "POST",
+    headers: CONNECT_HEADERS,
+    body: JSON.stringify(payload),
+  });
+
+  const text = await response.text();
+  let data: unknown = {};
+  if (text.trim().length > 0) {
+    try {
+      data = JSON.parse(text) as unknown;
+    } catch (error) {
+      console.error("Search response parse error", error, text);
+    }
+  }
+
+  if (!response.ok) {
+    const message =
+      (data as { error?: { message?: string } })?.error?.message ||
+      (data as { message?: string })?.message;
+    throw new Error(
+      message ? `検索に失敗しました: ${message}` : `検索に失敗しました (HTTP ${response.status})`,
+    );
+  }
+
+  const body = data as {
+    videos?: Array<{
+      videoId?: string;
+      title?: string;
+      thumbnailUrl?: string;
+    }>;
+  };
+
+  const videos = body.videos?.flatMap((item) => {
+    if (!item?.videoId) {
+      return [];
+    }
+    return [
+      {
+        videoId: item.videoId,
+        title: item.title ?? "無題の動画",
+        thumbnailUrl: item.thumbnailUrl ?? "",
+      },
+    ];
+  });
+
+  if (!videos || videos.length === 0) {
+    throw new Error("動画が見つかりませんでした");
+  }
+
+  return videos;
 }

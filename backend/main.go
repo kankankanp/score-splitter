@@ -3,17 +3,20 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"score-splitter/backend/gen/go/score"
 	"score-splitter/backend/gen/go/scoreconnect"
@@ -26,6 +29,17 @@ import (
 )
 
 type scoreService struct{}
+
+var youtubeInitialDataRegex = regexp.MustCompile(`(?s)ytInitialData\s*=\s*(\{.*?\})\s*;`)
+
+const (
+	maxYoutubeBodySize = 6 << 20 // 6MB
+	defaultSearchLimit = 10
+)
+
+var httpClient = &http.Client{
+	Timeout: 8 * time.Second,
+}
 
 func (s *scoreService) UploadScore(
 	ctx context.Context,
@@ -120,6 +134,32 @@ func (s *scoreService) TrimScore(
 		TrimmedPdf: trimmed,
 		Filename:   filename,
 	})
+
+	return res, nil
+}
+
+func (s *scoreService) SearchYoutubeVideos(
+	ctx context.Context,
+	req *connect.Request[score.SearchYoutubeVideosRequest],
+) (*connect.Response[score.SearchYoutubeVideosResponse], error) {
+	query := strings.TrimSpace(req.Msg.GetQuery())
+	if query == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("検索キーワードを入力してください"))
+	}
+
+	videos, err := fetchYoutubeVideos(ctx, query, defaultSearchLimit)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	res := connect.NewResponse(&score.SearchYoutubeVideosResponse{})
+	for _, video := range videos {
+		res.Msg.Videos = append(res.Msg.Videos, &score.YoutubeVideo{
+			VideoId:      video.VideoId,
+			Title:        video.Title,
+			ThumbnailUrl: video.ThumbnailUrl,
+		})
+	}
 
 	return res, nil
 }
@@ -430,6 +470,172 @@ func deriveFilename(title string) string {
 		sanitized = "trimmed-score"
 	}
 	return fmt.Sprintf("%s-trimmed.pdf", sanitized)
+}
+
+type youtubeVideoInfo struct {
+	VideoId      string
+	Title        string
+	ThumbnailUrl string
+}
+
+func fetchYoutubeVideos(ctx context.Context, query string, limit int) ([]youtubeVideoInfo, error) {
+	if limit <= 0 {
+		limit = defaultSearchLimit
+	}
+	searchURL := fmt.Sprintf(
+		"https://www.youtube.com/results?search_query=%s&sp=EgIQAQ%%253D%%253D",
+		url.QueryEscape(query),
+	)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, searchURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36")
+	request.Header.Set("Accept-Language", "ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7")
+
+	response, err := httpClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("YouTube検索に失敗しました (HTTP %d)", response.StatusCode)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxYoutubeBodySize))
+	if err != nil {
+		return nil, err
+	}
+
+	matches := youtubeInitialDataRegex.FindSubmatch(body)
+	if len(matches) < 2 {
+		return nil, errors.New("YouTube検索結果を解析できませんでした")
+	}
+
+	var initialData any
+	if err := json.Unmarshal(matches[1], &initialData); err != nil {
+		return nil, err
+	}
+
+	var renderers []map[string]any
+	extractVideoRenderers(initialData, &renderers, limit*2)
+
+	results := make([]youtubeVideoInfo, 0, limit)
+	seen := make(map[string]struct{}, limit)
+	for _, renderer := range renderers {
+		info, ok := convertVideoRenderer(renderer)
+		if !ok {
+			continue
+		}
+		if _, exists := seen[info.VideoId]; exists {
+			continue
+		}
+		seen[info.VideoId] = struct{}{}
+		results = append(results, info)
+		if len(results) >= limit {
+			break
+		}
+	}
+
+	if len(results) == 0 {
+		return nil, errors.New("該当する動画が見つかりませんでした")
+	}
+
+	return results, nil
+}
+
+func extractVideoRenderers(node any, out *[]map[string]any, limit int) {
+	if limit > 0 && len(*out) >= limit {
+		return
+	}
+	switch value := node.(type) {
+	case map[string]any:
+		if renderer, ok := value["videoRenderer"]; ok {
+			if rendererMap, ok := renderer.(map[string]any); ok {
+				*out = append(*out, rendererMap)
+				if limit > 0 && len(*out) >= limit {
+					return
+				}
+			}
+		}
+		for _, next := range value {
+			extractVideoRenderers(next, out, limit)
+			if limit > 0 && len(*out) >= limit {
+				return
+			}
+		}
+	case []any:
+		for _, item := range value {
+			extractVideoRenderers(item, out, limit)
+			if limit > 0 && len(*out) >= limit {
+				return
+			}
+		}
+	}
+}
+
+func convertVideoRenderer(renderer map[string]any) (youtubeVideoInfo, bool) {
+	videoID, _ := renderer["videoId"].(string)
+	if videoID == "" {
+		return youtubeVideoInfo{}, false
+	}
+
+	title := extractVideoTitle(renderer)
+	thumbnail := extractVideoThumbnail(renderer)
+
+	if title == "" {
+		title = "無題の動画"
+	}
+
+	return youtubeVideoInfo{
+		VideoId:      videoID,
+		Title:        title,
+		ThumbnailUrl: thumbnail,
+	}, true
+}
+
+func extractVideoTitle(renderer map[string]any) string {
+	titleField, ok := renderer["title"].(map[string]any)
+	if !ok {
+		return ""
+	}
+	if runs, ok := titleField["runs"].([]any); ok {
+		for _, run := range runs {
+			if runMap, ok := run.(map[string]any); ok {
+				if text, ok := runMap["text"].(string); ok && text != "" {
+					return text
+				}
+			}
+		}
+	}
+	if simple, ok := titleField["simpleText"].(string); ok {
+		return simple
+	}
+	return ""
+}
+
+func extractVideoThumbnail(renderer map[string]any) string {
+	thumbnailField, ok := renderer["thumbnail"].(map[string]any)
+	if !ok {
+		return ""
+	}
+	thumbnails, ok := thumbnailField["thumbnails"].([]any)
+	if !ok {
+		return ""
+	}
+	var urlCandidate string
+	for _, item := range thumbnails {
+		if thumbMap, ok := item.(map[string]any); ok {
+			if urlValue, ok := thumbMap["url"].(string); ok && urlValue != "" {
+				urlCandidate = urlValue
+			}
+		}
+	}
+	if urlCandidate == "" {
+		return ""
+	}
+	return strings.ReplaceAll(urlCandidate, "\\u0026", "&")
 }
 
 // CORSミドルウェアを追加
