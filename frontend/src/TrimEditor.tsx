@@ -415,7 +415,8 @@ function TrimEditor(): ReactElement {
     if (selectedPageNumber === null) {
       return false;
     }
-    return Boolean(pageSpecificAreas[selectedPageNumber]);
+    const areas = pageSpecificAreas[selectedPageNumber];
+    return Array.isArray(areas) && areas.length > 0;
   }, [pageSpecificAreas, selectedPageNumber]);
 
   const currentAreas = useMemo(() => {
@@ -436,6 +437,10 @@ function TrimEditor(): ReactElement {
         setPageSpecificAreas((current) => {
           const existing = current[selectedPageNumber] ?? [];
           const nextAreas = updater(existing);
+          if (nextAreas.length === 0) {
+            const { [selectedPageNumber]: _removed, ...rest } = current;
+            return rest;
+          }
           return {
             ...current,
             [selectedPageNumber]: nextAreas,
@@ -696,9 +701,6 @@ function TrimEditor(): ReactElement {
   }, [mutateCurrentAreas]);
 
   const handleRemoveArea = useCallback((areaId: string) => {
-    if (currentAreas.length <= 1) {
-      return;
-    }
     const filtered = currentAreas.filter((area) => area.id !== areaId);
     if (filtered.length === currentAreas.length) {
       return;
@@ -1048,6 +1050,22 @@ function TrimEditor(): ReactElement {
                             handleAreaPointerDown(event, area)
                           }
                         >
+                          <button
+                            type="button"
+                            aria-label="このエリアを削除"
+                            className="pointer-events-auto absolute -right-2 -top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-rose-400/60 bg-rose-500 text-xs font-semibold text-white shadow shadow-rose-950/50 transition hover:bg-rose-400"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              event.preventDefault();
+                              handleRemoveArea(area.id);
+                            }}
+                            onPointerDown={(event) => {
+                              event.stopPropagation();
+                              event.preventDefault();
+                            }}
+                          >
+                            ×
+                          </button>
                           {(["top-left", "top-right", "bottom-left", "bottom-right"] as CornerHandle[]).map(
                             (handle) => (
                               <button
@@ -1112,9 +1130,8 @@ function TrimEditor(): ReactElement {
                   </button>
                   <button
                     type="button"
-                    className="rounded-full border border-slate-600/60 px-3 py-1 text-xs text-slate-300 transition hover:border-rose-400/70 hover:text-rose-200 disabled:opacity-40"
+                    className="rounded-full border border-slate-600/60 px-3 py-1 text-xs text-slate-300 transition hover:border-rose-400/70 hover:text-rose-200"
                     onClick={() => handleRemoveArea(area.id)}
-                    disabled={currentAreas.length <= 1}
                   >
                     削除
                   </button>

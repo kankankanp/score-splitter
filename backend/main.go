@@ -100,12 +100,16 @@ func (s *scoreService) TrimScore(
 		if pageNumber < 1 {
 			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("ページ番号%vが無効です", setting.GetPageNumber()))
 		}
-		normalizedOverride, errNormalize := normalizeAreas(setting.GetAreas())
+		areas := setting.GetAreas()
+		if len(areas) == 0 {
+			continue
+		}
+		normalizedOverride, errNormalize := normalizeAreas(areas)
 		if errNormalize != nil {
 			return nil, connect.NewError(connect.CodeInvalidArgument, errNormalize)
 		}
 		if len(normalizedOverride) == 0 {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("ページ%vのトリミングエリアがありません", pageNumber))
+			continue
 		}
 		pageOverrides[pageNumber] = normalizedOverride
 	}
