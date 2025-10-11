@@ -280,7 +280,7 @@ function PracticeWorkspace({
   }, [selectedVideo]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-slate-950 text-slate-100" style={{ contain: 'layout style', maxWidth: '100vw', overflow: 'hidden' }}>
       <header className="flex items-center justify-between border-b border-slate-800/70 bg-slate-950/80 px-6 py-4 backdrop-blur">
         <div>
           <h1 className="text-2xl font-semibold">練習モード</h1>
@@ -300,7 +300,7 @@ function PracticeWorkspace({
         </button>
       </header>
 
-      <div className="flex flex-1 flex-col gap-6 p-6">
+      <div className="flex flex-1 flex-col gap-6 p-6" style={{ maxWidth: '100%', overflow: 'hidden' }}>
         <section className="flex flex-1 flex-col gap-4 rounded-3xl border border-slate-800/70 bg-slate-900/40 p-5 shadow-2xl shadow-black/40">
           <form
             className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-700/60 bg-slate-950/80 px-4 py-3"
@@ -329,14 +329,20 @@ function PracticeWorkspace({
           )}
           <div className="flex flex-1 flex-col gap-4 overflow-hidden">
             {selectedVideo ? (
-              <div className="aspect-video w-full max-w-3xl self-center overflow-hidden rounded-2xl border border-slate-700/60 bg-black">
+              <div className="relative w-full max-w-4xl self-center overflow-hidden rounded-2xl border border-slate-700/60 bg-black" style={{ aspectRatio: '16/9', contain: 'layout size style' }}>
                 <iframe
                   key={selectedVideo.videoId}
                   src={videoSrc}
                   title={selectedVideo.title}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
-                  className="h-full w-full"
+                  className="absolute inset-0 h-full w-full"
+                  style={{ 
+                    maxWidth: '100%', 
+                    maxHeight: '100%',
+                    border: 'none',
+                    outline: 'none'
+                  }}
                 />
               </div>
             ) : (
