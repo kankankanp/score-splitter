@@ -14,7 +14,7 @@ import {
   getDocument,
 } from "pdfjs-dist";
 import workerSrc from "pdfjs-dist/build/pdf.worker?url";
-import { searchYoutubeVideos, type YoutubeVideo } from "./api/scoreClient";
+import { searchYoutubeVideos, generateScrollVideo, type YoutubeVideo } from "./api/scoreClient";
 import { usePractice } from "./practiceContext";
 
 type PracticePageImage = {
@@ -63,6 +63,9 @@ function PracticeWorkspace({
   const [searching, setSearching] = useState<boolean>(false);
   const [searchError, setSearchError] = useState<string>("");
   const [selectedVideo, setSelectedVideo] = useState<YoutubeVideo | null>(null);
+  const [generatingVideo, setGeneratingVideo] = useState<boolean>(false);
+  const [videoGenerationError, setVideoGenerationError] = useState<string>("");
+  const [videoGenerationSuccess, setVideoGenerationSuccess] = useState<string>("");
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const scrollStateRef = useRef<{ lastTimestamp: number | null }>({
@@ -261,6 +264,54 @@ function PracticeWorkspace({
     }
   }, []);
 
+  const handleGenerateVideo = useCallback(async () => {
+    if (pages.length === 0) {
+      setVideoGenerationError("楽譜ページが読み込まれていません");
+      return;
+    }
+
+    setGeneratingVideo(true);
+    setVideoGenerationError("");
+    setVideoGenerationSuccess("");
+
+    try {
+      const response = await generateScrollVideo({
+        title,
+        pdfBytes: pdfData,
+        bpm,
+        videoWidth: 1920,
+        videoHeight: 1080,
+        fps: 30,
+        format: "mp4",
+      });
+
+      // 生成された動画をダウンロード
+      const blob = new Blob([response.videoData], { type: "video/mp4" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = response.filename;
+      link.click();
+      
+      setVideoGenerationSuccess(
+        `動画を生成しました（長さ: ${response.durationSeconds}秒）`
+      );
+      
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 1500);
+    } catch (error) {
+      console.error("動画生成エラー:", error);
+      if (error instanceof Error) {
+        setVideoGenerationError(error.message);
+      } else {
+        setVideoGenerationError("動画生成に失敗しました");
+      }
+    } finally {
+      setGeneratingVideo(false);
+    }
+  }, [pages.length, title, pdfData, bpm]);
+
   const videoSrc = useMemo(() => {
     if (!selectedVideo) {
       return "";
@@ -430,12 +481,32 @@ function PracticeWorkspace({
               >
                 先頭に戻る
               </button>
+              <button
+                type="button"
+                onClick={handleGenerateVideo}
+                className="rounded-full bg-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow shadow-indigo-900/40 transition hover:bg-indigo-400 disabled:opacity-60"
+                disabled={generatingVideo || pages.length === 0 || loadingPages}
+              >
+                {generatingVideo ? "動画生成中..." : "動画生成"}
+              </button>
             </div>
           </div>
 
           {renderError && (
             <div className="rounded-2xl border border-rose-500/50 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
               {renderError}
+            </div>
+          )}
+
+          {videoGenerationError && (
+            <div className="rounded-2xl border border-rose-500/50 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+              {videoGenerationError}
+            </div>
+          )}
+
+          {videoGenerationSuccess && (
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+              {videoGenerationSuccess}
             </div>
           )}
 

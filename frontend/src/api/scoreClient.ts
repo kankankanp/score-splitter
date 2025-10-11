@@ -21,6 +21,7 @@ const baseUrl = resolveBaseUrl();
 const UPLOAD_ENDPOINT = `${baseUrl}/score.ScoreService/UploadScore`;
 const TRIM_ENDPOINT = `${baseUrl}/score.ScoreService/TrimScore`;
 const SEARCH_YOUTUBE_ENDPOINT = `${baseUrl}/score.ScoreService/SearchYoutubeVideos`;
+const GENERATE_VIDEO_ENDPOINT = `${baseUrl}/score.ScoreService/GenerateScrollVideo`;
 
 export type UploadScoreParams = {
   title: string;
@@ -63,6 +64,23 @@ export type YoutubeVideo = {
   videoId: string;
   title: string;
   thumbnailUrl: string;
+};
+
+export type GenerateScrollVideoParams = {
+  title: string;
+  pdfBytes: Uint8Array;
+  bpm: number;
+  videoWidth?: number;
+  videoHeight?: number;
+  fps?: number;
+  format?: string;
+};
+
+export type GenerateScrollVideoResponse = {
+  message: string;
+  filename: string;
+  videoData: Uint8Array;
+  durationSeconds: number;
 };
 
 async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
@@ -342,4 +360,90 @@ export async function searchYoutubeVideos(query: string): Promise<YoutubeVideo[]
   }
 
   return videos;
+}
+
+export async function generateScrollVideo({
+  title,
+  pdfBytes,
+  bpm,
+  videoWidth = 1920,
+  videoHeight = 1080,
+  fps = 30,
+  format = "mp4",
+}: GenerateScrollVideoParams): Promise<GenerateScrollVideoResponse> {
+  if (pdfBytes.length === 0) {
+    throw new Error("PDFファイルが必要です");
+  }
+
+  if (bpm < 30 || bpm > 240) {
+    throw new Error("BPMは30から240の間で指定してください");
+  }
+
+  const payload = {
+    title,
+    pdfFile: await uint8ArrayToBase64(pdfBytes),
+    bpm,
+    videoWidth,
+    videoHeight,
+    fps,
+    format,
+  };
+
+  if (import.meta.env.DEV) {
+    console.log("generateScrollVideo payload", {
+      title,
+      pdfBytesLength: pdfBytes.length,
+      bpm,
+      videoWidth,
+      videoHeight,
+      fps,
+      format,
+    });
+  }
+
+  const response = await fetch(GENERATE_VIDEO_ENDPOINT, {
+    method: "POST",
+    headers: CONNECT_HEADERS,
+    body: JSON.stringify(payload),
+  });
+
+  const text = await response.text();
+  let data: unknown = {};
+  if (text.trim().length > 0) {
+    try {
+      data = JSON.parse(text) as unknown;
+    } catch (error) {
+      console.error("Generate video response parse error", error, text);
+    }
+  }
+
+  if (!response.ok) {
+    const message =
+      (data as { error?: { message?: string } })?.error?.message ||
+      (data as { message?: string })?.message;
+    throw new Error(
+      message ? `動画生成に失敗しました: ${message}` : `動画生成に失敗しました (HTTP ${response.status})`,
+    );
+  }
+
+  const body = data as {
+    message?: string;
+    filename?: string;
+    videoData?: string;
+    video_data?: string;
+    durationSeconds?: number;
+    duration_seconds?: number;
+  };
+
+  const base64 = body.videoData || body.video_data;
+  if (typeof base64 !== "string" || base64.length === 0) {
+    throw new Error("生成された動画を取得できませんでした");
+  }
+
+  return {
+    message: body.message || "動画生成が完了しました",
+    filename: body.filename || `${title}-scroll.${format}`,
+    videoData: base64ToUint8Array(base64),
+    durationSeconds: body.durationSeconds || body.duration_seconds || 0,
+  };
 }

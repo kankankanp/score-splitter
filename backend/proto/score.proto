@@ -8,6 +8,7 @@ service ScoreService {
   rpc UploadScore(UploadScoreRequest) returns (UploadScoreResponse);
   rpc TrimScore(TrimScoreRequest) returns (TrimScoreResponse);
   rpc SearchYoutubeVideos(SearchYoutubeVideosRequest) returns (SearchYoutubeVideosResponse);
+  rpc GenerateScrollVideo(GenerateScrollVideoRequest) returns (GenerateScrollVideoResponse);
 }
 
 message UploadScoreRequest {
@@ -59,4 +60,21 @@ message YoutubeVideo {
 
 message SearchYoutubeVideosResponse {
   repeated YoutubeVideo videos = 1;
+}
+
+message GenerateScrollVideoRequest {
+  string title = 1;                 // 動画のタイトル
+  bytes pdf_file = 2;               // トリミング済みPDFファイル
+  int32 bpm = 3;                    // BPM（スクロール速度の基準）
+  int32 video_width = 4;            // 動画の幅（デフォルト: 1920）
+  int32 video_height = 5;           // 動画の高さ（デフォルト: 1080）
+  int32 fps = 6;                    // フレームレート（デフォルト: 30）
+  string format = 7;                // 出力フォーマット（"mp4", "webm"等、デフォルト: "mp4"）
+}
+
+message GenerateScrollVideoResponse {
+  string message = 1;               // 結果メッセージ
+  bytes video_data = 2;             // 生成された動画データ
+  string filename = 3;              // 推奨ファイル名
+  int32 duration_seconds = 4;       // 動画の長さ（秒）
 }
