@@ -1,21 +1,14 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type FormEvent,
-  type ReactElement,
-} from "react";
-import { useNavigate } from "react-router-dom";
 import { GlobalWorkerOptions, getDocument } from "pdfjs-dist";
 import workerSrc from "pdfjs-dist/build/pdf.worker?url";
 import {
-  searchYoutubeVideos,
-  generateScrollVideo,
-  type YoutubeVideo,
-} from "./api/scoreClient";
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactElement,
+} from "react";
+import { useNavigate } from "react-router-dom";
 import { usePractice } from "./practiceContext";
 
 type PracticePageImage = {
@@ -59,15 +52,6 @@ function PracticeWorkspace({
   const [renderError, setRenderError] = useState<string>("");
   const [bpm, setBpm] = useState<number>(80);
   const [isScrolling, setIsScrolling] = useState<boolean>(false);
-  const [searchInput, setSearchInput] = useState<string>(title);
-  const [searchResults, setSearchResults] = useState<YoutubeVideo[]>([]);
-  const [searching, setSearching] = useState<boolean>(false);
-  const [searchError, setSearchError] = useState<string>("");
-  const [selectedVideo, setSelectedVideo] = useState<YoutubeVideo | null>(null);
-  const [generatingVideo, setGeneratingVideo] = useState<boolean>(false);
-  const [videoGenerationError, setVideoGenerationError] = useState<string>("");
-  const [videoGenerationSuccess, setVideoGenerationSuccess] =
-    useState<string>("");
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const scrollStateRef = useRef<{ lastTimestamp: number | null }>({
@@ -136,40 +120,6 @@ function PracticeWorkspace({
     };
   }, [pdfData]);
 
-  const runSearch = useCallback(async (query: string) => {
-    const trimmed = query.trim();
-    if (trimmed.length === 0) {
-      setSearchError("検索キーワードを入力してください");
-      setSearchResults([]);
-      setSelectedVideo(null);
-      return;
-    }
-
-    setSearching(true);
-    setSearchError("");
-    try {
-      const results = await searchYoutubeVideos(trimmed);
-      setSearchResults(results);
-      setSelectedVideo(results[0] ?? null);
-    } catch (error) {
-      console.error(error);
-      if (error instanceof Error) {
-        setSearchError(error.message || "動画の検索に失敗しました");
-      } else {
-        setSearchError("動画の検索に失敗しました");
-      }
-      setSearchResults([]);
-      setSelectedVideo(null);
-    } finally {
-      setSearching(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    setSearchInput(title);
-    void runSearch(title);
-  }, [title, runSearch]);
-
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (container) {
@@ -228,14 +178,6 @@ function PracticeWorkspace({
     };
   }, [isScrolling, bpm]);
 
-  const handleSearchSubmit = useCallback(
-    (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      void runSearch(searchInput);
-    },
-    [runSearch, searchInput]
-  );
-
   const handleStartScroll = useCallback(() => {
     if (pages.length === 0) {
       return;
@@ -274,74 +216,6 @@ function PracticeWorkspace({
     []
   );
 
-  const handleGenerateVideo = useCallback(async () => {
-    if (pages.length === 0) {
-      setVideoGenerationError("楽譜ページが読み込まれていません");
-      return;
-    }
-
-    setGeneratingVideo(true);
-    setVideoGenerationError("");
-    setVideoGenerationSuccess("");
-
-    try {
-      const response = await generateScrollVideo({
-        title,
-        pdfBytes: pdfData,
-        bpm,
-        videoWidth: 1920,
-        videoHeight: 1080,
-        fps: 30,
-        format: "mp4",
-      });
-
-      // 生成された動画をダウンロード
-      const blob = new Blob([response.videoData], { type: "video/mp4" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = response.filename;
-      link.click();
-
-      setVideoGenerationSuccess(
-        `動画を生成しました（長さ: ${response.durationSeconds}秒）`
-      );
-
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-      }, 1500);
-    } catch (error) {
-      console.error("動画生成エラー:", error);
-      if (error instanceof Error) {
-        setVideoGenerationError(error.message);
-      } else {
-        setVideoGenerationError("動画生成に失敗しました");
-      }
-    } finally {
-      setGeneratingVideo(false);
-    }
-  }, [pages.length, title, pdfData, bpm]);
-
-  const videoSrc = useMemo(() => {
-    if (!selectedVideo) {
-      return "";
-    }
-    const params = new URLSearchParams({
-      autoplay: "1",
-      rel: "0",
-      modestbranding: "1",
-      playsinline: "1",
-      iv_load_policy: "3",
-      showinfo: "0",
-      controls: "1",
-      loop: "1",
-    });
-    params.set("playlist", selectedVideo.videoId);
-    return `https://www.youtube.com/embed/${
-      selectedVideo.videoId
-    }?${params.toString()}`;
-  }, [selectedVideo]);
-
   return (
     <div
       className="min-h-screen bg-slate-50 text-slate-900"
@@ -370,98 +244,6 @@ function PracticeWorkspace({
         className="flex flex-1 flex-col gap-6 p-6"
         style={{ maxWidth: "100%", overflow: "hidden" }}
       >
-        <section className="flex flex-1 flex-col gap-4 rounded-3xl border border-slate-200 bg-white/60 p-5 shadow-2xl shadow-black/10">
-          <form
-            className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-300 bg-white/90 px-4 py-3"
-            onSubmit={handleSearchSubmit}
-          >
-            <div className="flex min-w-[16rem] flex-1 items-center gap-2">
-              <span className="text-xs text-slate-600">Youtube検索</span>
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(event) => setSearchInput(event.target.value)}
-                placeholder="曲名やアーティスト名"
-                className="flex-1 bg-transparent text-sm text-slate-900 outline-none"
-              />
-            </div>
-            <button
-              type="submit"
-              className="rounded-full bg-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow shadow-indigo-900/40 transition hover:bg-indigo-400 disabled:opacity-60"
-              disabled={searching}
-            >
-              {searching ? "検索中..." : "検索"}
-            </button>
-          </form>
-          {searchError && (
-            <p className="text-xs text-rose-600">{searchError}</p>
-          )}
-          <div className="flex flex-1 flex-col gap-4 overflow-hidden">
-            {selectedVideo ? (
-              <div
-                className="relative w-full max-w-4xl self-center overflow-hidden rounded-2xl border border-slate-300 bg-black"
-                style={{ aspectRatio: "16/9", contain: "layout size style" }}
-              >
-                <iframe
-                  key={selectedVideo.videoId}
-                  src={videoSrc}
-                  title={selectedVideo.title}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="absolute inset-0 h-full w-full"
-                  style={{
-                    maxWidth: "100%",
-                    maxHeight: "100%",
-                    border: "none",
-                    outline: "none",
-                  }}
-                />
-              </div>
-            ) : (
-              <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-600">
-                動画を検索して選択してください
-              </div>
-            )}
-
-            {searchResults.length > 0 && (
-              <div className="flex gap-3 overflow-x-auto pb-2">
-                {searchResults.map((video) => {
-                  const isActive = selectedVideo?.videoId === video.videoId;
-                  return (
-                    <button
-                      key={video.videoId}
-                      type="button"
-                      onClick={() => setSelectedVideo(video)}
-                      className={`flex min-w-[12rem] flex-col gap-2 rounded-2xl border px-3 py-3 text-left text-xs transition ${
-                        isActive
-                          ? "border-emerald-500 bg-emerald-50 text-emerald-900"
-                          : "border-slate-300 bg-white/80 text-slate-700 hover:border-emerald-400 hover:text-emerald-800"
-                      }`}
-                    >
-                      <div className="relative h-24 overflow-hidden rounded-xl border border-slate-300 bg-black">
-                        {video.thumbnailUrl ? (
-                          <img
-                            src={video.thumbnailUrl}
-                            alt={video.title}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <span className="flex h-full w-full items-center justify-center text-[10px] text-slate-600">
-                            サムネイルなし
-                          </span>
-                        )}
-                      </div>
-                      <span className="line-clamp-2 text-xs font-medium">
-                        {video.title}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </section>
-
         <section className="flex flex-1 flex-col gap-4 rounded-3xl border border-slate-200 bg-white/60 p-5 shadow-2xl shadow-black/10">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3 text-sm text-slate-800">
@@ -505,32 +287,12 @@ function PracticeWorkspace({
               >
                 先頭に戻る
               </button>
-              <button
-                type="button"
-                onClick={handleGenerateVideo}
-                className="rounded-full bg-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow shadow-indigo-900/40 transition hover:bg-indigo-400 disabled:opacity-60"
-                disabled={generatingVideo || pages.length === 0 || loadingPages}
-              >
-                {generatingVideo ? "動画生成中..." : "動画生成"}
-              </button>
             </div>
           </div>
 
           {renderError && (
             <div className="rounded-2xl border border-rose-400 bg-rose-50 px-4 py-3 text-sm text-rose-800">
               {renderError}
-            </div>
-          )}
-
-          {videoGenerationError && (
-            <div className="rounded-2xl border border-rose-400 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-              {videoGenerationError}
-            </div>
-          )}
-
-          {videoGenerationSuccess && (
-            <div className="rounded-2xl border border-emerald-400 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-              {videoGenerationSuccess}
             </div>
           )}
 

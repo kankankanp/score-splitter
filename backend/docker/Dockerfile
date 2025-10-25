@@ -1,5 +1,5 @@
 # 本番環境用Dockerfile
-FROM golang:1.24.3-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # 必要なパッケージをインストール
 RUN apk update && apk add --no-cache \

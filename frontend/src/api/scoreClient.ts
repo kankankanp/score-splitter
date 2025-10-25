@@ -20,8 +20,6 @@ function resolveBaseUrl(): string {
 const baseUrl = resolveBaseUrl();
 const UPLOAD_ENDPOINT = `${baseUrl}/score.ScoreService/UploadScore`;
 const TRIM_ENDPOINT = `${baseUrl}/score.ScoreService/TrimScore`;
-const SEARCH_YOUTUBE_ENDPOINT = `${baseUrl}/score.ScoreService/SearchYoutubeVideos`;
-const GENERATE_VIDEO_ENDPOINT = `${baseUrl}/score.ScoreService/GenerateScrollVideo`;
 
 export type UploadScoreParams = {
   title: string;
@@ -33,25 +31,25 @@ export type UploadScoreResponse = {
   scoreId: string;
 };
 
-export type CropAreaPayload = {
+export type CropArea = {
   top: number;
   left: number;
   width: number;
   height: number;
 };
 
-export type PageTrimSettingPayload = {
+export type PageTrimSetting = {
   pageNumber: number;
-  areas: CropAreaPayload[];
+  areas: CropArea[];
 };
 
 export type TrimScoreParams = {
   title: string;
   pdfBytes: Uint8Array;
-  areas: CropAreaPayload[];
-  password?: string | null;
+  areas: CropArea[];
+  password?: string;
   includePages?: number[];
-  pageSettings?: PageTrimSettingPayload[];
+  pageSettings?: PageTrimSetting[];
 };
 
 export type TrimScoreResponse = {
@@ -60,64 +58,32 @@ export type TrimScoreResponse = {
   pdfData: Uint8Array;
 };
 
-export type YoutubeVideo = {
-  videoId: string;
-  title: string;
-  thumbnailUrl: string;
-};
-
-export type GenerateScrollVideoParams = {
-  title: string;
-  pdfBytes: Uint8Array;
-  bpm: number;
-  videoWidth?: number;
-  videoHeight?: number;
-  fps?: number;
-  format?: string;
-};
-
-export type GenerateScrollVideoResponse = {
-  message: string;
-  filename: string;
-  videoData: Uint8Array;
-  durationSeconds: number;
-};
-
 async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
   if (buffer.byteLength === 0) {
     return "";
   }
-  return blobToBase64(new Blob([buffer]));
-}
-
-async function uint8ArrayToBase64(bytes: Uint8Array): Promise<string> {
-  if (bytes.byteLength === 0) {
-    return "";
-  }
-  // Clone to avoid issues with detached buffers.
-  const copy = bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength
-    ? bytes
-    : new Uint8Array(bytes);
-  return blobToBase64(new Blob([copy.buffer.slice(copy.byteOffset, copy.byteOffset + copy.byteLength)]));
-}
-
-function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
+    const blob = new Blob([buffer]);
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result;
       if (typeof result === "string") {
-        const [, base64 = ""] = result.split(",");
+        const base64 = result.split(",")[1] || "";
         resolve(base64);
       } else {
-        resolve("");
+        reject(new Error("Failed to convert ArrayBuffer to base64"));
       }
     };
-    reader.onerror = () => {
-      reject(reader.error ?? new Error("Base64変換に失敗しました"));
-    };
+    reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(blob);
   });
+}
+
+async function uint8ArrayToBase64(bytes: Uint8Array): Promise<string> {
+  if (bytes.length === 0) {
+    return "";
+  }
+  return arrayBufferToBase64(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
 }
 
 function base64ToUint8Array(value: string): Uint8Array {
@@ -206,8 +172,8 @@ export async function trimScore({
     })),
   };
 
-  if (password && password.length > 0) {
-    payload.password = password;
+  if (password && password.trim().length > 0) {
+    payload.password = password.trim();
   }
 
   if (includePages && includePages.length > 0) {
@@ -289,161 +255,40 @@ export async function trimScore({
   };
   const base64 = body.trimmedPdf || body.trimmed_pdf;
   if (typeof base64 !== "string" || base64.length === 0) {
+    console.error("Base64データが見つかりません:", {
+      body,
+      trimmedPdf: body.trimmedPdf,
+      trimmed_pdf: body.trimmed_pdf,
+    });
     throw new Error("生成されたPDFを取得できませんでした");
   }
+
+  console.log("Base64データを変換中:", {
+    base64Length: base64.length,
+    base64Sample: base64.substring(0, 100),
+  });
+
+  const pdfData = base64ToUint8Array(base64);
+  console.log("PDFデータ変換完了:", {
+    pdfDataLength: pdfData.length,
+    pdfDataType: typeof pdfData,
+  });
 
   return {
     message: body.message || "トリミングが完了しました",
     filename: body.filename || "trimmed-score.pdf",
-    pdfData: base64ToUint8Array(base64),
+    pdfData,
   };
 }
 
-export async function searchYoutubeVideos(query: string): Promise<YoutubeVideo[]> {
-  const trimmed = query.trim();
-  if (trimmed.length === 0) {
-    throw new Error("検索キーワードを入力してください");
-  }
+type CropAreaPayload = {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+};
 
-  const payload = {
-    query: trimmed,
-  };
-
-  const response = await fetch(SEARCH_YOUTUBE_ENDPOINT, {
-    method: "POST",
-    headers: CONNECT_HEADERS,
-    body: JSON.stringify(payload),
-  });
-
-  const text = await response.text();
-  let data: unknown = {};
-  if (text.trim().length > 0) {
-    try {
-      data = JSON.parse(text) as unknown;
-    } catch (error) {
-      console.error("Search response parse error", error, text);
-    }
-  }
-
-  if (!response.ok) {
-    const message =
-      (data as { error?: { message?: string } })?.error?.message ||
-      (data as { message?: string })?.message;
-    throw new Error(
-      message ? `検索に失敗しました: ${message}` : `検索に失敗しました (HTTP ${response.status})`,
-    );
-  }
-
-  const body = data as {
-    videos?: Array<{
-      videoId?: string;
-      title?: string;
-      thumbnailUrl?: string;
-    }>;
-  };
-
-  const videos = body.videos?.flatMap((item) => {
-    if (!item?.videoId) {
-      return [];
-    }
-    return [
-      {
-        videoId: item.videoId,
-        title: item.title ?? "無題の動画",
-        thumbnailUrl: item.thumbnailUrl ?? "",
-      },
-    ];
-  });
-
-  if (!videos || videos.length === 0) {
-    throw new Error("動画が見つかりませんでした");
-  }
-
-  return videos;
-}
-
-export async function generateScrollVideo({
-  title,
-  pdfBytes,
-  bpm,
-  videoWidth = 1920,
-  videoHeight = 1080,
-  fps = 30,
-  format = "mp4",
-}: GenerateScrollVideoParams): Promise<GenerateScrollVideoResponse> {
-  if (pdfBytes.length === 0) {
-    throw new Error("PDFファイルが必要です");
-  }
-
-  if (bpm < 30 || bpm > 240) {
-    throw new Error("BPMは30から240の間で指定してください");
-  }
-
-  const payload = {
-    title,
-    pdfFile: await uint8ArrayToBase64(pdfBytes),
-    bpm,
-    videoWidth,
-    videoHeight,
-    fps,
-    format,
-  };
-
-  if (import.meta.env.DEV) {
-    console.log("generateScrollVideo payload", {
-      title,
-      pdfBytesLength: pdfBytes.length,
-      bpm,
-      videoWidth,
-      videoHeight,
-      fps,
-      format,
-    });
-  }
-
-  const response = await fetch(GENERATE_VIDEO_ENDPOINT, {
-    method: "POST",
-    headers: CONNECT_HEADERS,
-    body: JSON.stringify(payload),
-  });
-
-  const text = await response.text();
-  let data: unknown = {};
-  if (text.trim().length > 0) {
-    try {
-      data = JSON.parse(text) as unknown;
-    } catch (error) {
-      console.error("Generate video response parse error", error, text);
-    }
-  }
-
-  if (!response.ok) {
-    const message =
-      (data as { error?: { message?: string } })?.error?.message ||
-      (data as { message?: string })?.message;
-    throw new Error(
-      message ? `動画生成に失敗しました: ${message}` : `動画生成に失敗しました (HTTP ${response.status})`,
-    );
-  }
-
-  const body = data as {
-    message?: string;
-    filename?: string;
-    videoData?: string;
-    video_data?: string;
-    durationSeconds?: number;
-    duration_seconds?: number;
-  };
-
-  const base64 = body.videoData || body.video_data;
-  if (typeof base64 !== "string" || base64.length === 0) {
-    throw new Error("生成された動画を取得できませんでした");
-  }
-
-  return {
-    message: body.message || "動画生成が完了しました",
-    filename: body.filename || `${title}-scroll.${format}`,
-    videoData: base64ToUint8Array(base64),
-    durationSeconds: body.durationSeconds || body.duration_seconds || 0,
-  };
-}
+type PageTrimSettingPayload = {
+  pageNumber: number;
+  areas: CropAreaPayload[];
+};

@@ -3,28 +3,22 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"math"
 	"net/http"
-	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
-	"time"
 
 	"score-splitter/backend/gen/go/score"
 	"score-splitter/backend/gen/go/score/scoreconnect"
 
 	"connectrpc.com/connect"
-	ffmpeg "github.com/u2takey/ffmpeg-go"
 	pdfapi "github.com/pdfcpu/pdfcpu/pkg/api"
 	pdfcpu "github.com/pdfcpu/pdfcpu/pkg/pdfcpu"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
@@ -33,16 +27,14 @@ import (
 
 type scoreService struct{}
 
-var youtubeInitialDataRegex = regexp.MustCompile(`(?s)ytInitialData\s*=\s*(\{.*?\})\s*;`)
-
-const (
-	maxYoutubeBodySize = 6 << 20 // 6MB
-	defaultSearchLimit = 10
-)
-
-var httpClient = &http.Client{
-	Timeout: 8 * time.Second,
+type normalizedArea struct {
+	top    float64
+	left   float64
+	width  float64
+	height float64
 }
+
+const minAreaSize = 0.01
 
 func (s *scoreService) UploadScore(
 	ctx context.Context,
@@ -145,107 +137,21 @@ func (s *scoreService) TrimScore(
 	return res, nil
 }
 
+// SearchYoutubeVideos は削除された機能のスタブ
 func (s *scoreService) SearchYoutubeVideos(
 	ctx context.Context,
 	req *connect.Request[score.SearchYoutubeVideosRequest],
 ) (*connect.Response[score.SearchYoutubeVideosResponse], error) {
-	query := strings.TrimSpace(req.Msg.GetQuery())
-	if query == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("検索キーワードを入力してください"))
-	}
-
-	videos, err := fetchYoutubeVideos(ctx, query, defaultSearchLimit)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	res := connect.NewResponse(&score.SearchYoutubeVideosResponse{})
-	for _, video := range videos {
-		res.Msg.Videos = append(res.Msg.Videos, &score.YoutubeVideo{
-			VideoId:      video.VideoId,
-			Title:        video.Title,
-			ThumbnailUrl: video.ThumbnailUrl,
-		})
-	}
-
-	return res, nil
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("YouTube検索機能は削除されました"))
 }
 
+// GenerateScrollVideo は削除された機能のスタブ
 func (s *scoreService) GenerateScrollVideo(
 	ctx context.Context,
 	req *connect.Request[score.GenerateScrollVideoRequest],
 ) (*connect.Response[score.GenerateScrollVideoResponse], error) {
-	log.Printf(
-		"GenerateScrollVideo request: title=%s pdfBytes=%d bpm=%d",
-		req.Msg.GetTitle(),
-		len(req.Msg.GetPdfFile()),
-		req.Msg.GetBpm(),
-	)
-
-	pdfBytes := req.Msg.GetPdfFile()
-	if len(pdfBytes) == 0 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("PDFファイルが空です"))
-	}
-
-	bpm := req.Msg.GetBpm()
-	if bpm <= 0 {
-		bpm = 80 // デフォルトBPM
-	}
-	if bpm < 30 || bpm > 240 {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("BPMは30から240の間で指定してください"))
-	}
-
-	videoWidth := req.Msg.GetVideoWidth()
-	if videoWidth <= 0 {
-		videoWidth = 1920
-	}
-
-	videoHeight := req.Msg.GetVideoHeight()
-	if videoHeight <= 0 {
-		videoHeight = 1080
-	}
-
-	fps := req.Msg.GetFps()
-	if fps <= 0 {
-		fps = 30
-	}
-
-	format := req.Msg.GetFormat()
-	if format == "" {
-		format = "mp4"
-	}
-
-	videoData, duration, err := generateScrollVideo(
-		pdfBytes,
-		int(bpm),
-		int(videoWidth),
-		int(videoHeight),
-		int(fps),
-		format,
-	)
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInternal, err)
-	}
-
-	filename := deriveVideoFilename(req.Msg.GetTitle(), format)
-	res := connect.NewResponse(&score.GenerateScrollVideoResponse{
-		Message:         "スクロール動画を生成しました",
-		VideoData:       videoData,
-		Filename:        filename,
-		DurationSeconds: int32(duration),
-	})
-
-	return res, nil
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("動画生成機能は削除されました"))
 }
-
-type normalizedArea struct {
-	top    float64
-	left   float64
-	width  float64
-	height float64
-}
-
-const minAreaSize = 0.01
 
 func clamp(value, min, max float64) float64 {
 	return math.Min(math.Max(value, min), max)
@@ -544,397 +450,6 @@ func deriveFilename(title string) string {
 		sanitized = "trimmed-score"
 	}
 	return fmt.Sprintf("%s-trimmed.pdf", sanitized)
-}
-
-func deriveVideoFilename(title, format string) string {
-	trimmed := strings.TrimSpace(title)
-	if trimmed == "" {
-		trimmed = "score-scroll"
-	}
-	sanitized := invalidFilenameChars.ReplaceAllString(trimmed, "_")
-	sanitized = strings.Trim(sanitized, ". ")
-	if sanitized == "" {
-		sanitized = "score-scroll"
-	}
-	return fmt.Sprintf("%s-scroll.%s", sanitized, format)
-}
-
-const SCROLL_PIXELS_PER_BEAT = 120.0
-
-func generateScrollVideo(pdfBytes []byte, bpm, videoWidth, videoHeight, fps int, format string) ([]byte, int, error) {
-	// 一時ディレクトリ作成
-	tempDir, err := os.MkdirTemp("", "scroll-video-*")
-	if err != nil {
-		return nil, 0, fmt.Errorf("一時ディレクトリの作成に失敗: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// PDFを画像に変換
-	imageFiles, totalWidth, err := convertPDFToImages(pdfBytes, tempDir, videoHeight)
-	if err != nil {
-		return nil, 0, fmt.Errorf("PDF画像変換に失敗: %v", err)
-	}
-
-	if len(imageFiles) == 0 {
-		return nil, 0, errors.New("PDFから画像を生成できませんでした")
-	}
-
-	// 横に結合した画像を作成
-	combinedImagePath := filepath.Join(tempDir, "combined.png")
-	if err := combineImagesHorizontally(imageFiles, combinedImagePath, totalWidth, videoHeight); err != nil {
-		return nil, 0, fmt.Errorf("画像結合に失敗: %v", err)
-	}
-
-	// 動画の長さを計算
-	// BPMベースでスクロール速度を計算: (BPM / 60) * SCROLL_PIXELS_PER_BEAT pixels/second
-	pixelsPerSecond := float64(bpm) / 60.0 * SCROLL_PIXELS_PER_BEAT
-	scrollDistance := float64(totalWidth - videoWidth)
-	if scrollDistance <= 0 {
-		scrollDistance = float64(totalWidth) // 最低でも全体の幅分はスクロール
-	}
-	durationSeconds := int(math.Ceil(scrollDistance / pixelsPerSecond))
-	if durationSeconds < 1 {
-		durationSeconds = 1
-	}
-
-	// FFmpegで動画生成
-	outputPath := filepath.Join(tempDir, fmt.Sprintf("output.%s", format))
-	videoData, err := createScrollVideoWithFFmpeg(combinedImagePath, outputPath, videoWidth, videoHeight, fps, durationSeconds, int(scrollDistance))
-	if err != nil {
-		return nil, 0, fmt.Errorf("動画生成に失敗: %v", err)
-	}
-
-	return videoData, durationSeconds, nil
-}
-
-func convertPDFToImages(pdfBytes []byte, tempDir string, targetHeight int) ([]string, int, error) {
-	// PDFをページごとに画像に変換
-	conf := model.NewDefaultConfiguration()
-	ctx, err := pdfapi.ReadValidateAndOptimize(bytes.NewReader(pdfBytes), conf)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	if err := ctx.EnsurePageCount(); err != nil {
-		return nil, 0, err
-	}
-
-	if ctx.PageCount == 0 {
-		return nil, 0, errors.New("PDFにページがありません")
-	}
-
-	var imageFiles []string
-	totalWidth := 0
-
-	for pageNum := 1; pageNum <= ctx.PageCount; pageNum++ {
-		// PDFページを画像として出力
-		imagePath := filepath.Join(tempDir, fmt.Sprintf("page_%03d.png", pageNum))
-		
-		// pdfcpuを使用してページを画像に変換
-		// 注: 実際の実装では、PDFページを画像に変換するための適切な方法を使用する必要があります
-		// ここではImageMagickやpdftoppmを使用することを想定
-		
-		if err := convertPDFPageToImage(pdfBytes, pageNum, imagePath, targetHeight); err != nil {
-			log.Printf("ページ%dの変換に失敗: %v", pageNum, err)
-			continue
-		}
-
-		// 画像の幅を取得
-		width, err := getImageWidth(imagePath)
-		if err != nil {
-			log.Printf("ページ%dの幅取得に失敗: %v", pageNum, err)
-			continue
-		}
-
-		imageFiles = append(imageFiles, imagePath)
-		totalWidth += width
-	}
-
-	return imageFiles, totalWidth, nil
-}
-
-func convertPDFPageToImage(pdfBytes []byte, pageNum int, outputPath string, targetHeight int) error {
-	// 一時PDFファイルを作成
-	tempPDF := outputPath + ".temp.pdf"
-	if err := os.WriteFile(tempPDF, pdfBytes, 0644); err != nil {
-		return err
-	}
-	defer os.Remove(tempPDF)
-
-	// ImageMagickまたはpdftoppmを使用してPDFを画像に変換
-	// まずpdftoppmを試す
-	cmd := exec.Command("pdftoppm", 
-		"-png",
-		"-f", strconv.Itoa(pageNum),
-		"-l", strconv.Itoa(pageNum),
-		"-scale-to-y", strconv.Itoa(targetHeight),
-		"-scale-to-x", "-1", // アスペクト比を維持
-		tempPDF,
-		strings.TrimSuffix(outputPath, ".png"),
-	)
-
-	if err := cmd.Run(); err != nil {
-		// pdftoppmが失敗した場合、ImageMagickを試す
-		cmd = exec.Command("convert",
-			"-density", "150",
-			fmt.Sprintf("%s[%d]", tempPDF, pageNum-1),
-			"-resize", fmt.Sprintf("x%d", targetHeight),
-			outputPath,
-		)
-		return cmd.Run()
-	}
-
-	// pdftoppmの出力ファイル名を調整
-	generatedFile := strings.TrimSuffix(outputPath, ".png") + "-" + fmt.Sprintf("%d", pageNum) + ".png"
-	if _, err := os.Stat(generatedFile); err == nil {
-		return os.Rename(generatedFile, outputPath)
-	}
-
-	return nil
-}
-
-func getImageWidth(imagePath string) (int, error) {
-	cmd := exec.Command("identify", "-format", "%w", imagePath)
-	output, err := cmd.Output()
-	if err != nil {
-		return 0, err
-	}
-
-	width, err := strconv.Atoi(strings.TrimSpace(string(output)))
-	if err != nil {
-		return 0, err
-	}
-
-	return width, nil
-}
-
-func combineImagesHorizontally(imageFiles []string, outputPath string, totalWidth, height int) error {
-	if len(imageFiles) == 0 {
-		return errors.New("結合する画像がありません")
-	}
-
-	if len(imageFiles) == 1 {
-		// 1つの画像の場合はコピー
-		return copyFile(imageFiles[0], outputPath)
-	}
-
-	// ImageMagickを使用して画像を横に結合
-	args := []string{"+append"}
-	args = append(args, imageFiles...)
-	args = append(args, outputPath)
-
-	cmd := exec.Command("convert", args...)
-	return cmd.Run()
-}
-
-func copyFile(src, dst string) error {
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer srcFile.Close()
-
-	dstFile, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer dstFile.Close()
-
-	_, err = io.Copy(dstFile, srcFile)
-	return err
-}
-
-func createScrollVideoWithFFmpeg(imagePath, outputPath string, width, height, fps, duration, scrollDistance int) ([]byte, error) {
-	// FFmpegを使用してスクロール動画を生成
-	err := ffmpeg.Input(imagePath).
-		Filter("scale", ffmpeg.Args{fmt.Sprintf("%d:%d", width+scrollDistance, height)}).
-		Filter("crop", ffmpeg.Args{fmt.Sprintf("%d:%d:t*%d/%d:0", width, height, scrollDistance, duration)}).
-		Output(outputPath, ffmpeg.KwArgs{
-			"vcodec":  "libx264",
-			"pix_fmt": "yuv420p",
-			"r":       fmt.Sprintf("%d", fps),
-			"t":       fmt.Sprintf("%d", duration),
-		}).
-		OverWriteOutput().
-		Run()
-
-	if err != nil {
-		return nil, fmt.Errorf("FFmpeg実行エラー: %v", err)
-	}
-
-	// 生成された動画ファイルを読み込み
-	videoData, err := os.ReadFile(outputPath)
-	if err != nil {
-		return nil, fmt.Errorf("動画ファイル読み込みエラー: %v", err)
-	}
-
-	return videoData, nil
-}
-
-type youtubeVideoInfo struct {
-	VideoId      string
-	Title        string
-	ThumbnailUrl string
-}
-
-func fetchYoutubeVideos(ctx context.Context, query string, limit int) ([]youtubeVideoInfo, error) {
-	if limit <= 0 {
-		limit = defaultSearchLimit
-	}
-	searchURL := fmt.Sprintf(
-		"https://www.youtube.com/results?search_query=%s&sp=EgIQAQ%%253D%%253D",
-		url.QueryEscape(query),
-	)
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, searchURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	request.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36")
-	request.Header.Set("Accept-Language", "ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7")
-
-	response, err := httpClient.Do(request)
-	if err != nil {
-		return nil, err
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("YouTube検索に失敗しました (HTTP %d)", response.StatusCode)
-	}
-
-	body, err := io.ReadAll(io.LimitReader(response.Body, maxYoutubeBodySize))
-	if err != nil {
-		return nil, err
-	}
-
-	matches := youtubeInitialDataRegex.FindSubmatch(body)
-	if len(matches) < 2 {
-		return nil, errors.New("YouTube検索結果を解析できませんでした")
-	}
-
-	var initialData any
-	if err := json.Unmarshal(matches[1], &initialData); err != nil {
-		return nil, err
-	}
-
-	var renderers []map[string]any
-	extractVideoRenderers(initialData, &renderers, limit*2)
-
-	results := make([]youtubeVideoInfo, 0, limit)
-	seen := make(map[string]struct{}, limit)
-	for _, renderer := range renderers {
-		info, ok := convertVideoRenderer(renderer)
-		if !ok {
-			continue
-		}
-		if _, exists := seen[info.VideoId]; exists {
-			continue
-		}
-		seen[info.VideoId] = struct{}{}
-		results = append(results, info)
-		if len(results) >= limit {
-			break
-		}
-	}
-
-	if len(results) == 0 {
-		return nil, errors.New("該当する動画が見つかりませんでした")
-	}
-
-	return results, nil
-}
-
-func extractVideoRenderers(node any, out *[]map[string]any, limit int) {
-	if limit > 0 && len(*out) >= limit {
-		return
-	}
-	switch value := node.(type) {
-	case map[string]any:
-		if renderer, ok := value["videoRenderer"]; ok {
-			if rendererMap, ok := renderer.(map[string]any); ok {
-				*out = append(*out, rendererMap)
-				if limit > 0 && len(*out) >= limit {
-					return
-				}
-			}
-		}
-		for _, next := range value {
-			extractVideoRenderers(next, out, limit)
-			if limit > 0 && len(*out) >= limit {
-				return
-			}
-		}
-	case []any:
-		for _, item := range value {
-			extractVideoRenderers(item, out, limit)
-			if limit > 0 && len(*out) >= limit {
-				return
-			}
-		}
-	}
-}
-
-func convertVideoRenderer(renderer map[string]any) (youtubeVideoInfo, bool) {
-	videoID, _ := renderer["videoId"].(string)
-	if videoID == "" {
-		return youtubeVideoInfo{}, false
-	}
-
-	title := extractVideoTitle(renderer)
-	thumbnail := extractVideoThumbnail(renderer)
-
-	if title == "" {
-		title = "無題の動画"
-	}
-
-	return youtubeVideoInfo{
-		VideoId:      videoID,
-		Title:        title,
-		ThumbnailUrl: thumbnail,
-	}, true
-}
-
-func extractVideoTitle(renderer map[string]any) string {
-	titleField, ok := renderer["title"].(map[string]any)
-	if !ok {
-		return ""
-	}
-	if runs, ok := titleField["runs"].([]any); ok {
-		for _, run := range runs {
-			if runMap, ok := run.(map[string]any); ok {
-				if text, ok := runMap["text"].(string); ok && text != "" {
-					return text
-				}
-			}
-		}
-	}
-	if simple, ok := titleField["simpleText"].(string); ok {
-		return simple
-	}
-	return ""
-}
-
-func extractVideoThumbnail(renderer map[string]any) string {
-	thumbnailField, ok := renderer["thumbnail"].(map[string]any)
-	if !ok {
-		return ""
-	}
-	thumbnails, ok := thumbnailField["thumbnails"].([]any)
-	if !ok {
-		return ""
-	}
-	var urlCandidate string
-	for _, item := range thumbnails {
-		if thumbMap, ok := item.(map[string]any); ok {
-			if urlValue, ok := thumbMap["url"].(string); ok && urlValue != "" {
-				urlCandidate = urlValue
-			}
-		}
-	}
-	if urlCandidate == "" {
-		return ""
-	}
-	return strings.ReplaceAll(urlCandidate, "\\u0026", "&")
 }
 
 // CORSミドルウェアを追加
