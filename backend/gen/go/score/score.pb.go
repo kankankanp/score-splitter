@@ -537,6 +537,166 @@ func (x *SearchYoutubeVideosResponse) GetVideos() []*YoutubeVideo {
 	return nil
 }
 
+type GenerateScrollVideoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Title         string                 `protobuf:"bytes,1,opt,name=title,proto3" json:"title,omitempty"`                                 // 動画のタイトル
+	PdfFile       []byte                 `protobuf:"bytes,2,opt,name=pdf_file,json=pdfFile,proto3" json:"pdf_file,omitempty"`              // トリミング済みPDFファイル
+	Bpm           int32                  `protobuf:"varint,3,opt,name=bpm,proto3" json:"bpm,omitempty"`                                    // BPM（スクロール速度の基準）
+	VideoWidth    int32                  `protobuf:"varint,4,opt,name=video_width,json=videoWidth,proto3" json:"video_width,omitempty"`    // 動画の幅（デフォルト: 1920）
+	VideoHeight   int32                  `protobuf:"varint,5,opt,name=video_height,json=videoHeight,proto3" json:"video_height,omitempty"` // 動画の高さ（デフォルト: 1080）
+	Fps           int32                  `protobuf:"varint,6,opt,name=fps,proto3" json:"fps,omitempty"`                                    // フレームレート（デフォルト: 30）
+	Format        string                 `protobuf:"bytes,7,opt,name=format,proto3" json:"format,omitempty"`                               // 出力フォーマット（"mp4", "webm"等、デフォルト: "mp4"）
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GenerateScrollVideoRequest) Reset() {
+	*x = GenerateScrollVideoRequest{}
+	mi := &file_score_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerateScrollVideoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerateScrollVideoRequest) ProtoMessage() {}
+
+func (x *GenerateScrollVideoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_score_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerateScrollVideoRequest.ProtoReflect.Descriptor instead.
+func (*GenerateScrollVideoRequest) Descriptor() ([]byte, []int) {
+	return file_score_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GenerateScrollVideoRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *GenerateScrollVideoRequest) GetPdfFile() []byte {
+	if x != nil {
+		return x.PdfFile
+	}
+	return nil
+}
+
+func (x *GenerateScrollVideoRequest) GetBpm() int32 {
+	if x != nil {
+		return x.Bpm
+	}
+	return 0
+}
+
+func (x *GenerateScrollVideoRequest) GetVideoWidth() int32 {
+	if x != nil {
+		return x.VideoWidth
+	}
+	return 0
+}
+
+func (x *GenerateScrollVideoRequest) GetVideoHeight() int32 {
+	if x != nil {
+		return x.VideoHeight
+	}
+	return 0
+}
+
+func (x *GenerateScrollVideoRequest) GetFps() int32 {
+	if x != nil {
+		return x.Fps
+	}
+	return 0
+}
+
+func (x *GenerateScrollVideoRequest) GetFormat() string {
+	if x != nil {
+		return x.Format
+	}
+	return ""
+}
+
+type GenerateScrollVideoResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Message         string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`                                         // 結果メッセージ
+	VideoData       []byte                 `protobuf:"bytes,2,opt,name=video_data,json=videoData,proto3" json:"video_data,omitempty"`                    // 生成された動画データ
+	Filename        string                 `protobuf:"bytes,3,opt,name=filename,proto3" json:"filename,omitempty"`                                       // 推奨ファイル名
+	DurationSeconds int32                  `protobuf:"varint,4,opt,name=duration_seconds,json=durationSeconds,proto3" json:"duration_seconds,omitempty"` // 動画の長さ（秒）
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *GenerateScrollVideoResponse) Reset() {
+	*x = GenerateScrollVideoResponse{}
+	mi := &file_score_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GenerateScrollVideoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GenerateScrollVideoResponse) ProtoMessage() {}
+
+func (x *GenerateScrollVideoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_score_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GenerateScrollVideoResponse.ProtoReflect.Descriptor instead.
+func (*GenerateScrollVideoResponse) Descriptor() ([]byte, []int) {
+	return file_score_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GenerateScrollVideoResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *GenerateScrollVideoResponse) GetVideoData() []byte {
+	if x != nil {
+		return x.VideoData
+	}
+	return nil
+}
+
+func (x *GenerateScrollVideoResponse) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *GenerateScrollVideoResponse) GetDurationSeconds() int32 {
+	if x != nil {
+		return x.DurationSeconds
+	}
+	return 0
+}
+
 var File_score_proto protoreflect.FileDescriptor
 
 const file_score_proto_rawDesc = "" +
@@ -576,11 +736,27 @@ const file_score_proto_rawDesc = "" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12#\n" +
 	"\rthumbnail_url\x18\x03 \x01(\tR\fthumbnailUrl\"J\n" +
 	"\x1bSearchYoutubeVideosResponse\x12+\n" +
-	"\x06videos\x18\x01 \x03(\v2\x13.score.YoutubeVideoR\x06videos2\xf2\x01\n" +
+	"\x06videos\x18\x01 \x03(\v2\x13.score.YoutubeVideoR\x06videos\"\xcd\x01\n" +
+	"\x1aGenerateScrollVideoRequest\x12\x14\n" +
+	"\x05title\x18\x01 \x01(\tR\x05title\x12\x19\n" +
+	"\bpdf_file\x18\x02 \x01(\fR\apdfFile\x12\x10\n" +
+	"\x03bpm\x18\x03 \x01(\x05R\x03bpm\x12\x1f\n" +
+	"\vvideo_width\x18\x04 \x01(\x05R\n" +
+	"videoWidth\x12!\n" +
+	"\fvideo_height\x18\x05 \x01(\x05R\vvideoHeight\x12\x10\n" +
+	"\x03fps\x18\x06 \x01(\x05R\x03fps\x12\x16\n" +
+	"\x06format\x18\a \x01(\tR\x06format\"\x9d\x01\n" +
+	"\x1bGenerateScrollVideoResponse\x12\x18\n" +
+	"\amessage\x18\x01 \x01(\tR\amessage\x12\x1d\n" +
+	"\n" +
+	"video_data\x18\x02 \x01(\fR\tvideoData\x12\x1a\n" +
+	"\bfilename\x18\x03 \x01(\tR\bfilename\x12)\n" +
+	"\x10duration_seconds\x18\x04 \x01(\x05R\x0fdurationSeconds2\xd0\x02\n" +
 	"\fScoreService\x12D\n" +
 	"\vUploadScore\x12\x19.score.UploadScoreRequest\x1a\x1a.score.UploadScoreResponse\x12>\n" +
 	"\tTrimScore\x12\x17.score.TrimScoreRequest\x1a\x18.score.TrimScoreResponse\x12\\\n" +
-	"\x13SearchYoutubeVideos\x12!.score.SearchYoutubeVideosRequest\x1a\".score.SearchYoutubeVideosResponseB+Z)score-splitter/backend/gen/go/score;scoreb\x06proto3"
+	"\x13SearchYoutubeVideos\x12!.score.SearchYoutubeVideosRequest\x1a\".score.SearchYoutubeVideosResponse\x12\\\n" +
+	"\x13GenerateScrollVideo\x12!.score.GenerateScrollVideoRequest\x1a\".score.GenerateScrollVideoResponseB+Z)score-splitter/backend/gen/go/score;scoreb\x06proto3"
 
 var (
 	file_score_proto_rawDescOnce sync.Once
@@ -594,7 +770,7 @@ func file_score_proto_rawDescGZIP() []byte {
 	return file_score_proto_rawDescData
 }
 
-var file_score_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_score_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_score_proto_goTypes = []any{
 	(*UploadScoreRequest)(nil),          // 0: score.UploadScoreRequest
 	(*UploadScoreResponse)(nil),         // 1: score.UploadScoreResponse
@@ -605,23 +781,27 @@ var file_score_proto_goTypes = []any{
 	(*SearchYoutubeVideosRequest)(nil),  // 6: score.SearchYoutubeVideosRequest
 	(*YoutubeVideo)(nil),                // 7: score.YoutubeVideo
 	(*SearchYoutubeVideosResponse)(nil), // 8: score.SearchYoutubeVideosResponse
+	(*GenerateScrollVideoRequest)(nil),  // 9: score.GenerateScrollVideoRequest
+	(*GenerateScrollVideoResponse)(nil), // 10: score.GenerateScrollVideoResponse
 }
 var file_score_proto_depIdxs = []int32{
-	2, // 0: score.PageTrimSetting.areas:type_name -> score.CropArea
-	2, // 1: score.TrimScoreRequest.areas:type_name -> score.CropArea
-	3, // 2: score.TrimScoreRequest.page_settings:type_name -> score.PageTrimSetting
-	7, // 3: score.SearchYoutubeVideosResponse.videos:type_name -> score.YoutubeVideo
-	0, // 4: score.ScoreService.UploadScore:input_type -> score.UploadScoreRequest
-	4, // 5: score.ScoreService.TrimScore:input_type -> score.TrimScoreRequest
-	6, // 6: score.ScoreService.SearchYoutubeVideos:input_type -> score.SearchYoutubeVideosRequest
-	1, // 7: score.ScoreService.UploadScore:output_type -> score.UploadScoreResponse
-	5, // 8: score.ScoreService.TrimScore:output_type -> score.TrimScoreResponse
-	8, // 9: score.ScoreService.SearchYoutubeVideos:output_type -> score.SearchYoutubeVideosResponse
-	7, // [7:10] is the sub-list for method output_type
-	4, // [4:7] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	2,  // 0: score.PageTrimSetting.areas:type_name -> score.CropArea
+	2,  // 1: score.TrimScoreRequest.areas:type_name -> score.CropArea
+	3,  // 2: score.TrimScoreRequest.page_settings:type_name -> score.PageTrimSetting
+	7,  // 3: score.SearchYoutubeVideosResponse.videos:type_name -> score.YoutubeVideo
+	0,  // 4: score.ScoreService.UploadScore:input_type -> score.UploadScoreRequest
+	4,  // 5: score.ScoreService.TrimScore:input_type -> score.TrimScoreRequest
+	6,  // 6: score.ScoreService.SearchYoutubeVideos:input_type -> score.SearchYoutubeVideosRequest
+	9,  // 7: score.ScoreService.GenerateScrollVideo:input_type -> score.GenerateScrollVideoRequest
+	1,  // 8: score.ScoreService.UploadScore:output_type -> score.UploadScoreResponse
+	5,  // 9: score.ScoreService.TrimScore:output_type -> score.TrimScoreResponse
+	8,  // 10: score.ScoreService.SearchYoutubeVideos:output_type -> score.SearchYoutubeVideosResponse
+	10, // 11: score.ScoreService.GenerateScrollVideo:output_type -> score.GenerateScrollVideoResponse
+	8,  // [8:12] is the sub-list for method output_type
+	4,  // [4:8] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_score_proto_init() }
@@ -635,7 +815,7 @@ func file_score_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_score_proto_rawDesc), len(file_score_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -120,7 +120,7 @@ function TrimEditor(): ReactElement {
   const [pdfPages, setPdfPages] = useState<PdfPagePreview[]>([]);
   const [excludedPageNumbers, setExcludedPageNumbers] = useState<number[]>([]);
   const [selectedPageNumber, setSelectedPageNumber] = useState<number | null>(
-    null,
+    null
   );
   const [selectedPageImage, setSelectedPageImage] =
     useState<SelectedPageImage | null>(null);
@@ -145,8 +145,9 @@ function TrimEditor(): ReactElement {
   const pdfDocumentRef = useRef<PDFDocumentProxy | null>(null);
   const pageContainerRef = useRef<HTMLDivElement | null>(null);
   const interactionRef = useRef<InteractionState | null>(null);
-  const passwordResolverRef =
-    useRef<((value: string | null) => void) | null>(null);
+  const passwordResolverRef = useRef<((value: string | null) => void) | null>(
+    null
+  );
   const passwordInputRef = useRef<HTMLInputElement | null>(null);
   const passwordCancelledRef = useRef<boolean>(false);
 
@@ -227,7 +228,7 @@ function TrimEditor(): ReactElement {
     (event: ChangeEvent<HTMLInputElement>) => {
       setPasswordValue(event.target.value);
     },
-    [],
+    []
   );
 
   const handlePasswordKeyDown = useCallback(
@@ -242,7 +243,7 @@ function TrimEditor(): ReactElement {
         handlePasswordSubmit();
       }
     },
-    [handlePasswordCancel, handlePasswordSubmit],
+    [handlePasswordCancel, handlePasswordSubmit]
   );
 
   const handleFileChange = useCallback(
@@ -266,7 +267,10 @@ function TrimEditor(): ReactElement {
         setExcludedPageNumbers([]);
 
         const loadingTask = getDocument({ data: bytes });
-        loadingTask.onPassword = (updatePassword: (arg0: string) => void, reason: number) => {
+        loadingTask.onPassword = (
+          updatePassword: (arg0: string) => void,
+          reason: number
+        ) => {
           const message =
             reason === PasswordResponses.NEED_PASSWORD
               ? "このPDFはパスワードで保護されています。パスワードを入力してください。"
@@ -302,9 +306,11 @@ function TrimEditor(): ReactElement {
           canvas.height = Math.floor(renderViewport.height);
           const context = canvas.getContext("2d");
           if (context) {
-            await page
-              .render({ canvasContext: context, viewport: renderViewport, canvas })
-              .promise;
+            await page.render({
+              canvasContext: context,
+              viewport: renderViewport,
+              canvas,
+            }).promise;
           }
           previews.push({
             pageNumber: index,
@@ -339,7 +345,7 @@ function TrimEditor(): ReactElement {
         event.target.value = "";
       }
     },
-    [requestPassword, resetState],
+    [requestPassword, resetState]
   );
 
   useEffect(() => {
@@ -363,9 +369,11 @@ function TrimEditor(): ReactElement {
         canvas.height = Math.floor(renderViewport.height);
         const context = canvas.getContext("2d");
         if (context) {
-          await page
-            .render({ canvasContext: context, viewport: renderViewport, canvas })
-            .promise;
+          await page.render({
+            canvasContext: context,
+            viewport: renderViewport,
+            canvas,
+          }).promise;
         }
         if (!cancelled) {
           setSelectedPageImage({
@@ -429,7 +437,10 @@ function TrimEditor(): ReactElement {
     return globalAreas;
   }, [globalAreas, pageSpecificAreas, selectedPageNumber]);
 
-  const sortedAreas = useMemo(() => sortAreasByTop(currentAreas), [currentAreas]);
+  const sortedAreas = useMemo(
+    () => sortAreasByTop(currentAreas),
+    [currentAreas]
+  );
 
   const mutateCurrentAreas = useCallback(
     (updater: (areas: CropArea[]) => CropArea[]) => {
@@ -438,7 +449,7 @@ function TrimEditor(): ReactElement {
           const existing = current[selectedPageNumber] ?? [];
           const nextAreas = updater(existing);
           if (nextAreas.length === 0) {
-            const { [selectedPageNumber]: _removed, ...rest } = current;
+            const { ...rest } = current;
             return rest;
           }
           return {
@@ -450,7 +461,7 @@ function TrimEditor(): ReactElement {
       }
       setGlobalAreas((current) => updater(current));
     },
-    [selectedPageHasSpecific, selectedPageNumber],
+    [selectedPageHasSpecific, selectedPageNumber]
   );
 
   useEffect(() => {
@@ -476,7 +487,7 @@ function TrimEditor(): ReactElement {
       return;
     }
     const stillAvailable = availablePages.some(
-      (page) => page.pageNumber === selectedPageNumber,
+      (page) => page.pageNumber === selectedPageNumber
     );
     if (!stillAvailable) {
       setSelectedPageNumber(firstPageNumber);
@@ -499,11 +510,11 @@ function TrimEditor(): ReactElement {
     (areaId: string, updater: (current: CropArea) => CropArea) => {
       mutateCurrentAreas((areas) =>
         areas.map((area) =>
-          area.id === areaId ? clampArea(updater(area)) : area,
-        ),
+          area.id === areaId ? clampArea(updater(area)) : area
+        )
       );
     },
-    [mutateCurrentAreas],
+    [mutateCurrentAreas]
   );
 
   const handleContainerPointerDown = useCallback(
@@ -537,31 +548,34 @@ function TrimEditor(): ReactElement {
       pageContainerRef.current.setPointerCapture(event.pointerId);
       event.preventDefault();
     },
-    [getRelativePosition, mutateCurrentAreas, selectedPageImage],
+    [getRelativePosition, mutateCurrentAreas, selectedPageImage]
   );
 
-  const handleAreaPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>, area: CropArea) => {
-    if (!pageContainerRef.current) {
-      return;
-    }
-    const { x, y } = getRelativePosition(event);
-    interactionRef.current = {
-      type: "moving",
-      areaId: area.id,
-      offsetX: x - area.left,
-      offsetY: y - area.top,
-    };
-    setActiveAreaId(area.id);
-    pageContainerRef.current.setPointerCapture(event.pointerId);
-    event.preventDefault();
-    event.stopPropagation();
-  }, [getRelativePosition]);
+  const handleAreaPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>, area: CropArea) => {
+      if (!pageContainerRef.current) {
+        return;
+      }
+      const { x, y } = getRelativePosition(event);
+      interactionRef.current = {
+        type: "moving",
+        areaId: area.id,
+        offsetX: x - area.left,
+        offsetY: y - area.top,
+      };
+      setActiveAreaId(area.id);
+      pageContainerRef.current.setPointerCapture(event.pointerId);
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    [getRelativePosition]
+  );
 
   const handleHandlePointerDown = useCallback(
     (
       event: ReactPointerEvent<HTMLButtonElement>,
       area: CropArea,
-      handle: CornerHandle,
+      handle: CornerHandle
     ) => {
       if (!pageContainerRef.current) {
         return;
@@ -577,7 +591,7 @@ function TrimEditor(): ReactElement {
       event.preventDefault();
       event.stopPropagation();
     },
-    [],
+    []
   );
 
   const handlePointerMove = useCallback(
@@ -663,7 +677,7 @@ function TrimEditor(): ReactElement {
         });
       }
     },
-    [getRelativePosition, updateArea],
+    [getRelativePosition, updateArea]
   );
 
   const handlePointerUp = useCallback(
@@ -672,7 +686,7 @@ function TrimEditor(): ReactElement {
       if (interaction) {
         if (interaction.type === "creating") {
           const createdArea = currentAreas.find(
-            (area) => area.id === interaction.areaId,
+            (area) => area.id === interaction.areaId
           );
           if (
             createdArea &&
@@ -680,7 +694,7 @@ function TrimEditor(): ReactElement {
               createdArea.height <= MIN_AREA_SIZE * 1.1)
           ) {
             mutateCurrentAreas((areas) =>
-              areas.filter((area) => area.id !== interaction.areaId),
+              areas.filter((area) => area.id !== interaction.areaId)
             );
             setActiveAreaId(null);
           }
@@ -691,7 +705,7 @@ function TrimEditor(): ReactElement {
         pageContainerRef.current.releasePointerCapture(event.pointerId);
       }
     },
-    [currentAreas, mutateCurrentAreas],
+    [currentAreas, mutateCurrentAreas]
   );
 
   const handleAddArea = useCallback(() => {
@@ -700,20 +714,23 @@ function TrimEditor(): ReactElement {
     setActiveAreaId(next.id);
   }, [mutateCurrentAreas]);
 
-  const handleRemoveArea = useCallback((areaId: string) => {
-    const filtered = currentAreas.filter((area) => area.id !== areaId);
-    if (filtered.length === currentAreas.length) {
-      return;
-    }
-    mutateCurrentAreas(() => filtered);
-    if (filtered.length > 0) {
-      if (activeAreaId === areaId) {
-        setActiveAreaId(filtered[0].id);
+  const handleRemoveArea = useCallback(
+    (areaId: string) => {
+      const filtered = currentAreas.filter((area) => area.id !== areaId);
+      if (filtered.length === currentAreas.length) {
+        return;
       }
-    } else {
-      setActiveAreaId(null);
-    }
-  }, [activeAreaId, currentAreas, mutateCurrentAreas]);
+      mutateCurrentAreas(() => filtered);
+      if (filtered.length > 0) {
+        if (activeAreaId === areaId) {
+          setActiveAreaId(filtered[0].id);
+        }
+      } else {
+        setActiveAreaId(null);
+      }
+    },
+    [activeAreaId, currentAreas, mutateCurrentAreas]
+  );
 
   const handleEnablePageSpecific = useCallback(() => {
     if (selectedPageNumber === null) {
@@ -746,7 +763,7 @@ function TrimEditor(): ReactElement {
       if (!current[selectedPageNumber]) {
         return current;
       }
-      const { [selectedPageNumber]: _removed, ...rest } = current;
+      const { ...rest } = current;
       return rest;
     });
     interactionRef.current = null;
@@ -757,24 +774,27 @@ function TrimEditor(): ReactElement {
     }
   }, [globalAreas, selectedPageNumber]);
 
-  const handleExcludePage = useCallback((pageNumber: number) => {
-    if (availablePageCount <= 1) {
-      setErrorMessage("トリミング対象は少なくとも1ページ必要です");
-      return;
-    }
-    let updated = false;
-    setExcludedPageNumbers((current) => {
-      if (current.includes(pageNumber)) {
-        return current;
+  const handleExcludePage = useCallback(
+    (pageNumber: number) => {
+      if (availablePageCount <= 1) {
+        setErrorMessage("トリミング対象は少なくとも1ページ必要です");
+        return;
       }
-      updated = true;
-      return [...current, pageNumber];
-    });
-    if (updated) {
-      setErrorMessage("");
-      setStatusMessage("");
-    }
-  }, [availablePageCount]);
+      let updated = false;
+      setExcludedPageNumbers((current) => {
+        if (current.includes(pageNumber)) {
+          return current;
+        }
+        updated = true;
+        return [...current, pageNumber];
+      });
+      if (updated) {
+        setErrorMessage("");
+        setStatusMessage("");
+      }
+    },
+    [availablePageCount]
+  );
 
   const handleRestorePage = useCallback((pageNumber: number) => {
     let restored = false;
@@ -794,7 +814,7 @@ function TrimEditor(): ReactElement {
   const handleExport = useCallback(async () => {
     const hasDefaultAreas = globalAreas.length > 0;
     const hasPageOverrides = Object.values(pageSpecificAreas).some(
-      (areas) => areas.length > 0,
+      (areas) => areas.length > 0
     );
     if (!pdfBytes || (!hasDefaultAreas && !hasPageOverrides)) {
       setErrorMessage("トリミングエリアを設定してください");
@@ -811,9 +831,12 @@ function TrimEditor(): ReactElement {
     const defaultAreasForPayload = sortAreasByTop(globalAreas);
 
     const pagesRequiringDefault = includePageNumbers.filter(
-      (pageNumber) => !pageSpecificAreas[pageNumber],
+      (pageNumber) => !pageSpecificAreas[pageNumber]
     );
-    if (pagesRequiringDefault.length > 0 && defaultAreasForPayload.length === 0) {
+    if (
+      pagesRequiringDefault.length > 0 &&
+      defaultAreasForPayload.length === 0
+    ) {
       setErrorMessage("共通のトリミングエリアを設定してください");
       return;
     }
@@ -821,7 +844,9 @@ function TrimEditor(): ReactElement {
     for (const [pageKey, areas] of Object.entries(pageSpecificAreas)) {
       const pageNumber = Number(pageKey);
       if (includePageSet.has(pageNumber) && areas.length === 0) {
-        setErrorMessage(`ページ${pageNumber}のトリミングエリアを設定してください`);
+        setErrorMessage(
+          `ページ${pageNumber}のトリミングエリアを設定してください`
+        );
         return;
       }
     }
@@ -874,7 +899,7 @@ function TrimEditor(): ReactElement {
           ? (sourceBuffer as ArrayBuffer)
           : (sourceBuffer.slice(
               response.pdfData.byteOffset,
-              response.pdfData.byteOffset + response.pdfData.byteLength,
+              response.pdfData.byteOffset + response.pdfData.byteLength
             ) as ArrayBuffer);
 
       const blob = new Blob([arrayBuffer], { type: "application/pdf" });
@@ -883,7 +908,9 @@ function TrimEditor(): ReactElement {
       link.href = url;
       link.download = response.filename || `${baseTitle}-trimmed.pdf`;
       link.click();
-      setStatusMessage(response.message || "トリミング済みPDFをダウンロードしました");
+      setStatusMessage(
+        response.message || "トリミング済みPDFをダウンロードしました"
+      );
       setErrorMessage("");
       setTimeout(() => {
         URL.revokeObjectURL(url);
@@ -918,31 +945,34 @@ function TrimEditor(): ReactElement {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10">
       <header className="space-y-3">
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-100">
+        <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
           楽譜PDFトリミング
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-slate-600">
           PDFを読み込んで全ページプレビューし、共通のトリミング範囲を指定したうえで新しいPDFとして書き出します。
         </p>
       </header>
 
-      <section className="rounded-3xl bg-slate-900/60 p-6 shadow-2xl shadow-slate-950/50">
+      <section className="rounded-3xl bg-white/80 p-6 shadow-2xl shadow-slate-950/10">
         <div className="flex flex-col gap-4">
-          <label className="flex flex-col gap-2 text-sm text-slate-200">
-            <span className="font-semibold text-slate-100">PDFファイルを選択</span>
+          <label className="flex flex-col gap-2 text-sm text-slate-800">
+            <span className="font-semibold text-slate-900">
+              PDFファイルを選択
+            </span>
             <input
               type="file"
               accept="application/pdf"
               onChange={handleFileChange}
-              className="w-full cursor-pointer rounded-xl border border-dashed border-slate-600/60 bg-slate-900/60 px-4 py-3 text-base text-slate-100 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-500 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:border-indigo-500/60"
+              className="w-full cursor-pointer rounded-xl border border-dashed border-slate-400 bg-slate-50 px-4 py-3 text-base text-slate-900 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-500 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:border-indigo-500"
             />
           </label>
           {loadingMessage && (
-            <p className="text-sm text-indigo-300">{loadingMessage}</p>
+            <p className="text-sm text-indigo-600">{loadingMessage}</p>
           )}
           {pdfName && (
-            <p className="text-sm text-slate-400">
-              選択中: <span className="font-medium text-slate-200">{pdfName}</span>
+            <p className="text-sm text-slate-600">
+              選択中:{" "}
+              <span className="font-medium text-slate-800">{pdfName}</span>
             </p>
           )}
           {practiceData && (
@@ -958,12 +988,12 @@ function TrimEditor(): ReactElement {
       </section>
 
       {errorMessage && (
-        <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm font-medium text-rose-200">
+        <div className="rounded-2xl border border-rose-400 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800">
           {errorMessage}
         </div>
       )}
       {statusMessage && (
-        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-200">
+        <div className="rounded-2xl border border-emerald-400 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
           {statusMessage}
         </div>
       )}
@@ -972,20 +1002,22 @@ function TrimEditor(): ReactElement {
         <section className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-100">トリミングプレビュー</h2>
+              <h2 className="text-lg font-semibold text-slate-900">
+                トリミングプレビュー
+              </h2>
               <button
                 type="button"
                 onClick={handleAddArea}
-                className="rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-slate-100 shadow shadow-slate-950/50 transition hover:bg-slate-700"
+                className="rounded-full bg-slate-200 px-4 py-2 text-sm font-medium text-slate-900 shadow shadow-slate-300 transition hover:bg-slate-300"
               >
                 エリア追加
               </button>
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-600">
               プレビュー内をドラッグしてエリアを追加できます。エリア枠をドラッグして移動・リサイズしてください。
             </p>
             {selectedPageNumber !== null && (
-              <div className="flex items-center justify-between rounded-2xl border border-slate-700/60 bg-slate-900/50 px-4 py-2 text-xs text-slate-300">
+              <div className="flex items-center justify-between rounded-2xl border border-slate-300 bg-white/80 px-4 py-2 text-xs text-slate-700">
                 <span>
                   {selectedPageHasSpecific
                     ? `ページ${selectedPageNumber}専用の設定を編集中`
@@ -996,7 +1028,7 @@ function TrimEditor(): ReactElement {
                     <button
                       type="button"
                       onClick={handleDisablePageSpecific}
-                      className="rounded-full border border-slate-600/60 px-3 py-1 text-xs font-medium text-slate-200 transition hover:border-emerald-500/60 hover:text-emerald-200"
+                      className="rounded-full border border-slate-400 px-3 py-1 text-xs font-medium text-slate-800 transition hover:border-emerald-500 hover:text-emerald-700"
                     >
                       共通設定に戻す
                     </button>
@@ -1004,7 +1036,7 @@ function TrimEditor(): ReactElement {
                     <button
                       type="button"
                       onClick={handleEnablePageSpecific}
-                      className="rounded-full border border-indigo-500/60 px-3 py-1 text-xs font-medium text-indigo-200 transition hover:bg-indigo-500/20"
+                      className="rounded-full border border-indigo-400 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-50"
                     >
                       このページ専用にする
                     </button>
@@ -1014,7 +1046,7 @@ function TrimEditor(): ReactElement {
             )}
             <div
               ref={pageContainerRef}
-              className="relative overflow-hidden rounded-3xl border border-slate-700/60 bg-slate-950/40"
+              className="relative overflow-hidden rounded-3xl border border-slate-300 bg-slate-50"
               onPointerDown={handleContainerPointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
@@ -1066,33 +1098,38 @@ function TrimEditor(): ReactElement {
                           >
                             ×
                           </button>
-                          {(["top-left", "top-right", "bottom-left", "bottom-right"] as CornerHandle[]).map(
-                            (handle) => (
-                              <button
-                                key={handle}
-                                type="button"
-                                data-handle={handle}
-                                onPointerDown={(event) =>
-                                  handleHandlePointerDown(event, area, handle)
-                                }
-                                className={`absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-200/70 bg-emerald-300/80 shadow ${
-                                  isActive ? "" : "opacity-60"
-                                }`}
-                                style={{
-                                  left: handle.includes("right") ? "100%" : "0%",
-                                  top: handle.includes("bottom") ? "100%" : "0%",
-                                  cursor:
-                                    handle === "top-left"
-                                      ? "nwse-resize"
-                                      : handle === "top-right"
-                                        ? "nesw-resize"
-                                        : handle === "bottom-left"
-                                          ? "nesw-resize"
-                                          : "nwse-resize",
-                                }}
-                              />
-                            ),
-                          )}
+                          {(
+                            [
+                              "top-left",
+                              "top-right",
+                              "bottom-left",
+                              "bottom-right",
+                            ] as CornerHandle[]
+                          ).map((handle) => (
+                            <button
+                              key={handle}
+                              type="button"
+                              data-handle={handle}
+                              onPointerDown={(event) =>
+                                handleHandlePointerDown(event, area, handle)
+                              }
+                              className={`absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-emerald-600 bg-emerald-400 shadow ${
+                                isActive ? "" : "opacity-60"
+                              }`}
+                              style={{
+                                left: handle.includes("right") ? "100%" : "0%",
+                                top: handle.includes("bottom") ? "100%" : "0%",
+                                cursor:
+                                  handle === "top-left"
+                                    ? "nwse-resize"
+                                    : handle === "top-right"
+                                    ? "nesw-resize"
+                                    : handle === "bottom-left"
+                                    ? "nesw-resize"
+                                    : "nwse-resize",
+                              }}
+                            />
+                          ))}
                         </div>
                       );
                     })}
@@ -1100,22 +1137,26 @@ function TrimEditor(): ReactElement {
                 </>
               ) : (
                 <div className="flex h-80 items-center justify-center text-sm text-slate-500">
-                  {renderingPage ? "ページを描画しています…" : "ページを選択してください"}
+                  {renderingPage
+                    ? "ページを描画しています…"
+                    : "ページを選択してください"}
                 </div>
               )}
             </div>
           </div>
 
           <aside className="flex flex-col gap-4">
-            <h2 className="text-lg font-semibold text-slate-100">トリミングエリア</h2>
+            <h2 className="text-lg font-semibold text-slate-900">
+              トリミングエリア
+            </h2>
             <ul className="space-y-3">
               {sortedAreas.map((area, index) => (
                 <li
                   key={area.id}
                   className={`flex items-start justify-between rounded-2xl border px-4 py-3 text-sm ${
                     area.id === activeAreaId
-                      ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-100"
-                      : "border-slate-700/60 bg-slate-900/60 text-slate-200"
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-900"
+                      : "border-slate-300 bg-white/80 text-slate-800"
                   }`}
                 >
                   <button
@@ -1125,12 +1166,15 @@ function TrimEditor(): ReactElement {
                   >
                     <div className="font-semibold">エリア{index + 1}</div>
                     <div className="text-xs opacity-80">
-                      上 {Math.round(area.top * 100)}% / 左 {Math.round(area.left * 100)}% / 幅 {Math.round(area.width * 100)}% / 高さ {Math.round(area.height * 100)}%
+                      上 {Math.round(area.top * 100)}% / 左{" "}
+                      {Math.round(area.left * 100)}% / 幅{" "}
+                      {Math.round(area.width * 100)}% / 高さ{" "}
+                      {Math.round(area.height * 100)}%
                     </div>
                   </button>
                   <button
                     type="button"
-                    className="rounded-full border border-slate-600/60 px-3 py-1 text-xs text-slate-300 transition hover:border-rose-400/70 hover:text-rose-200"
+                    className="rounded-full border border-slate-400 px-3 py-1 text-xs text-slate-700 transition hover:border-rose-400 hover:text-rose-700"
                     onClick={() => handleRemoveArea(area.id)}
                   >
                     削除
@@ -1152,7 +1196,9 @@ function TrimEditor(): ReactElement {
 
       {pdfPages.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-slate-100">ページプレビュー</h2>
+          <h2 className="text-lg font-semibold text-slate-900">
+            ページプレビュー
+          </h2>
           <div className="flex gap-3 overflow-x-auto pb-2">
             {availablePages.map((page) => {
               const isSelected = page.pageNumber === selectedPageNumber;
@@ -1163,14 +1209,14 @@ function TrimEditor(): ReactElement {
                     onClick={() => setSelectedPageNumber(page.pageNumber)}
                     className={`flex min-w-[8rem] flex-col items-center gap-2 rounded-2xl border px-3 pb-3 pt-2 text-xs transition ${
                       isSelected
-                        ? "border-indigo-400/70 bg-indigo-500/10 text-indigo-100"
-                        : "border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-indigo-500/60 hover:text-indigo-200"
+                        ? "border-indigo-400 bg-indigo-50 text-indigo-900"
+                        : "border-slate-300 bg-white/80 text-slate-700 hover:border-indigo-400 hover:text-indigo-800"
                     }`}
                   >
                     <img
                       src={page.thumbnailUrl}
                       alt={`サムネイル ${page.pageNumber}`}
-                      className="h-32 w-auto select-none rounded-xl border border-slate-700/50 object-contain"
+                      className="h-32 w-auto select-none rounded-xl border border-slate-300 object-contain"
                       draggable={false}
                     />
                     <span>ページ {page.pageNumber}</span>
@@ -1182,7 +1228,7 @@ function TrimEditor(): ReactElement {
                       event.preventDefault();
                       handleExcludePage(page.pageNumber);
                     }}
-                    className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full border border-slate-600/60 bg-slate-900/80 text-sm text-slate-300 shadow shadow-slate-950/50 transition hover:border-rose-500/70 hover:text-rose-200"
+                    className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full border border-slate-400 bg-white/90 text-sm text-slate-700 shadow shadow-slate-300 transition hover:border-rose-500 hover:text-rose-700"
                     title={`ページ${page.pageNumber}を除外`}
                   >
                     ×
@@ -1191,20 +1237,20 @@ function TrimEditor(): ReactElement {
               );
             })}
             {availablePages.length === 0 && (
-              <div className="flex h-36 min-w-[16rem] items-center justify-center rounded-2xl border border-slate-700/60 bg-slate-900/60 px-4 text-xs text-slate-400">
+              <div className="flex h-36 min-w-[16rem] items-center justify-center rounded-2xl border border-slate-300 bg-white/80 px-4 text-xs text-slate-600">
                 すべてのページが除外されています
               </div>
             )}
           </div>
           {excludedPages.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-              <span className="text-slate-400">除外したページ:</span>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-700">
+              <span className="text-slate-600">除外したページ:</span>
               {excludedPages.map((page) => (
                 <button
                   key={`excluded-${page.pageNumber}`}
                   type="button"
                   onClick={() => handleRestorePage(page.pageNumber)}
-                  className="rounded-full border border-slate-600/60 px-3 py-1 text-xs text-slate-200 transition hover:border-emerald-500/60 hover:text-emerald-200"
+                  className="rounded-full border border-slate-400 px-3 py-1 text-xs text-slate-800 transition hover:border-emerald-500 hover:text-emerald-700"
                 >
                   ページ {page.pageNumber} を戻す
                 </button>
@@ -1216,23 +1262,27 @@ function TrimEditor(): ReactElement {
 
       {passwordPromptOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur">
-          <div className="w-full max-w-sm rounded-2xl border border-slate-700/70 bg-slate-900/90 p-6 shadow-2xl shadow-black/60">
-            <h3 className="text-lg font-semibold text-slate-100">PDFパスワード</h3>
-            <p className="mt-2 text-sm text-slate-300">{passwordPromptMessage}</p>
+          <div className="w-full max-w-sm rounded-2xl border border-slate-300 bg-white/95 p-6 shadow-2xl shadow-black/30">
+            <h3 className="text-lg font-semibold text-slate-900">
+              PDFパスワード
+            </h3>
+            <p className="mt-2 text-sm text-slate-700">
+              {passwordPromptMessage}
+            </p>
             <input
               ref={passwordInputRef}
               type="password"
               value={passwordValue}
               onChange={handlePasswordInputChange}
               onKeyDown={handlePasswordKeyDown}
-              className="mt-4 w-full rounded-xl border border-slate-700/60 bg-slate-950 px-4 py-2 text-sm text-slate-100 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
+              className="mt-4 w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
               placeholder="パスワード"
             />
             <div className="mt-5 flex items-center justify-end gap-3">
               <button
                 type="button"
                 onClick={handlePasswordCancel}
-                className="rounded-full border border-slate-600/70 px-4 py-2 text-sm font-medium text-slate-300 transition hover:border-slate-500 hover:text-slate-100"
+                className="rounded-full border border-slate-400 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-600 hover:text-slate-900"
               >
                 キャンセル
               </button>
