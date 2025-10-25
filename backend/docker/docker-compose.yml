@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  score-splitter-backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.local
+    container_name: score-splitter-backend-dev
+    ports:
+      - "8085:8085"
+    volumes:
+      # ソースコードをマウント（ホットリロード用）
+      - ../:/app
+      # Go modulesキャッシュをマウント
+      - go-modules-cache:/go/pkg/mod
+      # uploadsディレクトリをマウント
+      - uploads-data:/app/uploads
+    environment:
+      - GO_ENV=development
+      - CGO_ENABLED=0
+    networks:
+      - score-splitter-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  go-modules-cache:
+    driver: local
+  uploads-data:
+    driver: local
+
+networks:
+  score-splitter-network:
+    driver: bridge

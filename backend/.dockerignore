@@ -1,0 +1,37 @@
+# Git関連
+.git
+.gitignore
+
+# ドキュメント
+README.md
+*.md
+
+# 一時ファイル
+.DS_Store
+Thumbs.db
+tmp/
+*.tmp
+*.swp
+*.swo
+
+# テストファイル
+*_test.go
+testdata/
+
+# 開発用ファイル
+.air.toml
+build-errors.log
+
+# IDEファイル
+.vscode/
+.idea/
+*.iml
+
+# ログファイル
+*.log
+
+# アップロードディレクトリ（開発時のデータ）
+uploads/
+
+# 依存関係キャッシュ（Dockerで管理）
+vendor/

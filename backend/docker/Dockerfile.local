@@ -1,0 +1,32 @@
+# 開発環境用Dockerfile
+FROM golang:1.24.3-alpine
+
+# 必要なパッケージをインストール
+RUN apk update && apk add --no-cache \
+    git \
+    ca-certificates \
+    tzdata \
+    imagemagick \
+    poppler-utils \
+    ffmpeg \
+    curl \
+    vim
+
+# ワーキングディレクトリを設定
+WORKDIR /app
+
+# Go modulesをコピーして依存関係をダウンロード
+COPY go.mod go.sum ./
+RUN go mod download
+
+# air（ホットリロード）をインストール
+RUN go install github.com/air-verse/air@latest
+
+# アップロード用ディレクトリを作成
+RUN mkdir -p uploads
+
+# ポート8085を公開
+EXPOSE 8085
+
+# airを使ってホットリロードでアプリケーションを実行
+CMD ["air", "-c", ".air.toml"]

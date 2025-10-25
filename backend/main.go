@@ -970,6 +970,13 @@ func corsMiddleware(next http.Handler) http.Handler {
 func main() {
 	mux := http.NewServeMux()
 
+	// ヘルスチェックエンドポイント
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok","service":"score-splitter-backend"}`))
+	})
+
 	// 2つの値（パスとハンドラ）を受け取る
 	path, handler := scoreconnect.NewScoreServiceHandler(&scoreService{})
 	mux.Handle(path, corsMiddleware(handler))
