@@ -9,12 +9,13 @@ import {
   type ReactElement,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  GlobalWorkerOptions,
-  getDocument,
-} from "pdfjs-dist";
+import { GlobalWorkerOptions, getDocument } from "pdfjs-dist";
 import workerSrc from "pdfjs-dist/build/pdf.worker?url";
-import { searchYoutubeVideos, generateScrollVideo, type YoutubeVideo } from "./api/scoreClient";
+import {
+  searchYoutubeVideos,
+  generateScrollVideo,
+  type YoutubeVideo,
+} from "./api/scoreClient";
 import { usePractice } from "./practiceContext";
 
 type PracticePageImage = {
@@ -38,7 +39,7 @@ function bufferToUint8Array(data: Uint8Array): Uint8Array {
   return data.byteOffset === 0 && data.byteLength === data.buffer.byteLength
     ? data
     : new Uint8Array(
-        data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength),
+        data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
       );
 }
 
@@ -65,7 +66,8 @@ function PracticeWorkspace({
   const [selectedVideo, setSelectedVideo] = useState<YoutubeVideo | null>(null);
   const [generatingVideo, setGeneratingVideo] = useState<boolean>(false);
   const [videoGenerationError, setVideoGenerationError] = useState<string>("");
-  const [videoGenerationSuccess, setVideoGenerationSuccess] = useState<string>("");
+  const [videoGenerationSuccess, setVideoGenerationSuccess] =
+    useState<string>("");
 
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const scrollStateRef = useRef<{ lastTimestamp: number | null }>({
@@ -95,9 +97,11 @@ function PracticeWorkspace({
           canvas.height = Math.floor(renderViewport.height);
           const context = canvas.getContext("2d");
           if (context) {
-            await page
-              .render({ canvasContext: context, viewport: renderViewport, canvas })
-              .promise;
+            await page.render({
+              canvasContext: context,
+              viewport: renderViewport,
+              canvas,
+            }).promise;
           }
           if (!cancelled) {
             rendered.push({
@@ -198,10 +202,13 @@ function PracticeWorkspace({
         const pixelsPerSecond = (bpm / 60) * SCROLL_PIXELS_PER_BEAT;
         container.scrollLeft += (pixelsPerSecond * delta) / 1000;
 
-        if (container.scrollLeft + container.clientWidth >= container.scrollWidth - 1) {
+        if (
+          container.scrollLeft + container.clientWidth >=
+          container.scrollWidth - 1
+        ) {
           container.scrollLeft = Math.max(
             0,
-            container.scrollWidth - container.clientWidth,
+            container.scrollWidth - container.clientWidth
           );
           active = false;
           scrollStateRef.current.lastTimestamp = null;
@@ -226,7 +233,7 @@ function PracticeWorkspace({
       event.preventDefault();
       void runSearch(searchInput);
     },
-    [runSearch, searchInput],
+    [runSearch, searchInput]
   );
 
   const handleStartScroll = useCallback(() => {
@@ -257,12 +264,15 @@ function PracticeWorkspace({
     }
   }, []);
 
-  const handleBpmChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
-    const value = Number(event.target.value);
-    if (Number.isFinite(value)) {
-      setBpm(Math.round(clamp(value, MIN_BPM, MAX_BPM)));
-    }
-  }, []);
+  const handleBpmChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const value = Number(event.target.value);
+      if (Number.isFinite(value)) {
+        setBpm(Math.round(clamp(value, MIN_BPM, MAX_BPM)));
+      }
+    },
+    []
+  );
 
   const handleGenerateVideo = useCallback(async () => {
     if (pages.length === 0) {
@@ -292,11 +302,11 @@ function PracticeWorkspace({
       link.href = url;
       link.download = response.filename;
       link.click();
-      
+
       setVideoGenerationSuccess(
         `動画を生成しました（長さ: ${response.durationSeconds}秒）`
       );
-      
+
       setTimeout(() => {
         URL.revokeObjectURL(url);
       }, 1500);
@@ -327,15 +337,20 @@ function PracticeWorkspace({
       loop: "1",
     });
     params.set("playlist", selectedVideo.videoId);
-    return `https://www.youtube.com/embed/${selectedVideo.videoId}?${params.toString()}`;
+    return `https://www.youtube.com/embed/${
+      selectedVideo.videoId
+    }?${params.toString()}`;
   }, [selectedVideo]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100" style={{ contain: 'layout style', maxWidth: '100vw', overflow: 'hidden' }}>
-      <header className="flex items-center justify-between border-b border-slate-800/70 bg-slate-950/80 px-6 py-4 backdrop-blur">
+    <div
+      className="min-h-screen bg-slate-50 text-slate-900"
+      style={{ contain: "layout style", maxWidth: "100vw", overflow: "hidden" }}
+    >
+      <header className="flex items-center justify-between border-b border-slate-200 bg-white/80 px-6 py-4 backdrop-blur">
         <div>
           <h1 className="text-2xl font-semibold">練習モード</h1>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-600">
             {title} / {filename}
           </p>
         </div>
@@ -345,26 +360,29 @@ function PracticeWorkspace({
             setIsScrolling(false);
             onExit();
           }}
-          className="rounded-full border border-slate-600/60 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-emerald-500/70 hover:text-emerald-100"
+          className="rounded-full border border-slate-400 px-4 py-2 text-sm font-medium text-slate-800 transition hover:border-emerald-500 hover:text-emerald-700"
         >
           トリミングへ戻る
         </button>
       </header>
 
-      <div className="flex flex-1 flex-col gap-6 p-6" style={{ maxWidth: '100%', overflow: 'hidden' }}>
-        <section className="flex flex-1 flex-col gap-4 rounded-3xl border border-slate-800/70 bg-slate-900/40 p-5 shadow-2xl shadow-black/40">
+      <div
+        className="flex flex-1 flex-col gap-6 p-6"
+        style={{ maxWidth: "100%", overflow: "hidden" }}
+      >
+        <section className="flex flex-1 flex-col gap-4 rounded-3xl border border-slate-200 bg-white/60 p-5 shadow-2xl shadow-black/10">
           <form
-            className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-700/60 bg-slate-950/80 px-4 py-3"
+            className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-300 bg-white/90 px-4 py-3"
             onSubmit={handleSearchSubmit}
           >
             <div className="flex min-w-[16rem] flex-1 items-center gap-2">
-              <span className="text-xs text-slate-400">Youtube検索</span>
+              <span className="text-xs text-slate-600">Youtube検索</span>
               <input
                 type="text"
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder="曲名やアーティスト名"
-                className="flex-1 bg-transparent text-sm text-slate-100 outline-none"
+                className="flex-1 bg-transparent text-sm text-slate-900 outline-none"
               />
             </div>
             <button
@@ -376,11 +394,14 @@ function PracticeWorkspace({
             </button>
           </form>
           {searchError && (
-            <p className="text-xs text-rose-300">{searchError}</p>
+            <p className="text-xs text-rose-600">{searchError}</p>
           )}
           <div className="flex flex-1 flex-col gap-4 overflow-hidden">
             {selectedVideo ? (
-              <div className="relative w-full max-w-4xl self-center overflow-hidden rounded-2xl border border-slate-700/60 bg-black" style={{ aspectRatio: '16/9', contain: 'layout size style' }}>
+              <div
+                className="relative w-full max-w-4xl self-center overflow-hidden rounded-2xl border border-slate-300 bg-black"
+                style={{ aspectRatio: "16/9", contain: "layout size style" }}
+              >
                 <iframe
                   key={selectedVideo.videoId}
                   src={videoSrc}
@@ -388,16 +409,16 @@ function PracticeWorkspace({
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
                   className="absolute inset-0 h-full w-full"
-                  style={{ 
-                    maxWidth: '100%', 
-                    maxHeight: '100%',
-                    border: 'none',
-                    outline: 'none'
+                  style={{
+                    maxWidth: "100%",
+                    maxHeight: "100%",
+                    border: "none",
+                    outline: "none",
                   }}
                 />
               </div>
             ) : (
-              <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-slate-700/60 bg-slate-950/60 text-sm text-slate-400">
+              <div className="flex flex-1 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 text-sm text-slate-600">
                 動画を検索して選択してください
               </div>
             )}
@@ -413,11 +434,11 @@ function PracticeWorkspace({
                       onClick={() => setSelectedVideo(video)}
                       className={`flex min-w-[12rem] flex-col gap-2 rounded-2xl border px-3 py-3 text-left text-xs transition ${
                         isActive
-                          ? "border-emerald-500/80 bg-emerald-500/10 text-emerald-100"
-                          : "border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-emerald-500/60 hover:text-emerald-100"
+                          ? "border-emerald-500 bg-emerald-50 text-emerald-900"
+                          : "border-slate-300 bg-white/80 text-slate-700 hover:border-emerald-400 hover:text-emerald-800"
                       }`}
                     >
-                      <div className="relative h-24 overflow-hidden rounded-xl border border-slate-700/50 bg-black">
+                      <div className="relative h-24 overflow-hidden rounded-xl border border-slate-300 bg-black">
                         {video.thumbnailUrl ? (
                           <img
                             src={video.thumbnailUrl}
@@ -425,12 +446,14 @@ function PracticeWorkspace({
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <span className="flex h-full w-full items-center justify-center text-[10px] text-slate-400">
+                          <span className="flex h-full w-full items-center justify-center text-[10px] text-slate-600">
                             サムネイルなし
                           </span>
                         )}
                       </div>
-                      <span className="line-clamp-2 text-xs font-medium">{video.title}</span>
+                      <span className="line-clamp-2 text-xs font-medium">
+                        {video.title}
+                      </span>
                     </button>
                   );
                 })}
@@ -439,22 +462,23 @@ function PracticeWorkspace({
           </div>
         </section>
 
-        <section className="flex flex-1 flex-col gap-4 rounded-3xl border border-slate-800/70 bg-slate-900/40 p-5 shadow-2xl shadow-black/40">
+        <section className="flex flex-1 flex-col gap-4 rounded-3xl border border-slate-200 bg-white/60 p-5 shadow-2xl shadow-black/10">
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-3 text-sm text-slate-200">
+            <div className="flex items-center gap-3 text-sm text-slate-800">
               <label className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">BPM</span>
+                <span className="text-xs text-slate-600">BPM</span>
                 <input
                   type="number"
                   value={bpm}
                   min={MIN_BPM}
                   max={MAX_BPM}
                   onChange={handleBpmChange}
-                  className="w-20 rounded-lg border border-slate-700/60 bg-slate-950 px-2 py-1 text-right text-slate-100 focus:border-emerald-500/60 focus:outline-none"
+                  className="w-20 rounded-lg border border-slate-300 bg-white px-2 py-1 text-right text-slate-900 focus:border-emerald-500 focus:outline-none"
                 />
               </label>
               <span className="text-xs text-slate-500">
-                ピクセル速度: 約{Math.round((bpm / 60) * SCROLL_PIXELS_PER_BEAT)}px/s
+                ピクセル速度: 約
+                {Math.round((bpm / 60) * SCROLL_PIXELS_PER_BEAT)}px/s
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -469,7 +493,7 @@ function PracticeWorkspace({
               <button
                 type="button"
                 onClick={handlePauseScroll}
-                className="rounded-full border border-slate-600/60 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-slate-500 hover:text-slate-100 disabled:opacity-60"
+                className="rounded-full border border-slate-400 px-4 py-2 text-sm font-medium text-slate-800 transition hover:border-slate-600 hover:text-slate-900 disabled:opacity-60"
                 disabled={!isScrolling}
               >
                 一時停止
@@ -477,7 +501,7 @@ function PracticeWorkspace({
               <button
                 type="button"
                 onClick={handleResetScroll}
-                className="rounded-full border border-slate-600/60 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-slate-500 hover:text-slate-100"
+                className="rounded-full border border-slate-400 px-4 py-2 text-sm font-medium text-slate-800 transition hover:border-slate-600 hover:text-slate-900"
               >
                 先頭に戻る
               </button>
@@ -493,33 +517,33 @@ function PracticeWorkspace({
           </div>
 
           {renderError && (
-            <div className="rounded-2xl border border-rose-500/50 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+            <div className="rounded-2xl border border-rose-400 bg-rose-50 px-4 py-3 text-sm text-rose-800">
               {renderError}
             </div>
           )}
 
           {videoGenerationError && (
-            <div className="rounded-2xl border border-rose-500/50 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+            <div className="rounded-2xl border border-rose-400 bg-rose-50 px-4 py-3 text-sm text-rose-800">
               {videoGenerationError}
             </div>
           )}
 
           {videoGenerationSuccess && (
-            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+            <div className="rounded-2xl border border-emerald-400 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
               {videoGenerationSuccess}
             </div>
           )}
 
           <div
             ref={scrollContainerRef}
-            className="relative flex-1 overflow-x-auto overflow-y-hidden rounded-2xl border border-slate-800/70 bg-slate-950/60"
+            className="relative flex-1 overflow-x-auto overflow-y-hidden rounded-2xl border border-slate-200 bg-white/80"
           >
             {loadingPages ? (
-              <div className="flex h-full items-center justify-center text-sm text-slate-400">
+              <div className="flex h-full items-center justify-center text-sm text-slate-600">
                 楽譜を読み込んでいます…
               </div>
             ) : pages.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-sm text-slate-400">
+              <div className="flex h-full items-center justify-center text-sm text-slate-600">
                 表示できる楽譜がありません
               </div>
             ) : (
@@ -529,7 +553,7 @@ function PracticeWorkspace({
                     key={`practice-${page.pageNumber}`}
                     src={page.dataUrl}
                     alt={`楽譜 ${page.pageNumber}`}
-                    className="h-full max-h-[70vh] w-auto flex-shrink-0 rounded-xl border border-slate-700/60 bg-slate-900/80 object-contain"
+                    className="h-full max-h-[70vh] w-auto flex-shrink-0 rounded-xl border border-slate-300 bg-white object-contain"
                     draggable={false}
                   />
                 ))}
@@ -554,12 +578,12 @@ function PracticePage(): ReactElement {
 
   if (!practiceData) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950 text-slate-300">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 text-slate-700">
         <p>練習用のデータが見つかりませんでした。</p>
         <button
           type="button"
           onClick={() => navigate("/")}
-          className="rounded-full border border-slate-600/60 px-4 py-2 text-sm text-slate-200 transition hover:border-emerald-500/70 hover:text-emerald-100"
+          className="rounded-full border border-slate-400 px-4 py-2 text-sm text-slate-800 transition hover:border-emerald-500 hover:text-emerald-700"
         >
           トリミング画面へ戻る
         </button>
