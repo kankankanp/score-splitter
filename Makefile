@@ -21,7 +21,7 @@ dev-frontend: ## フロントエンドの開発サーバーを起動
 
 dev-backend: ## バックエンドの開発サーバーを起動
 	@echo "⚙️ バックエンド開発サーバーを起動中..."
-	@cd backend/docker && docker-compose up --build
+	@cd backend && docker-compose up --build
 
 ##@ Build
 build: build-frontend build-backend ## フロントエンドとバックエンドをビルド

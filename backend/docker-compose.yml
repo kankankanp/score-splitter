@@ -3,14 +3,14 @@ version: '3.8'
 services:
   score-splitter-backend:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile.local
+      context: .
+      dockerfile: Dockerfile.local
     container_name: score-splitter-backend-dev
     ports:
       - "8085:8085"
     volumes:
       # ソースコードをマウント（ホットリロード用）
-      - ../:/app
+      - ./:/app
       # Go modulesキャッシュをマウント
       - go-modules-cache:/go/pkg/mod
       # uploadsディレクトリをマウント
