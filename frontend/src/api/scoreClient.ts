@@ -83,7 +83,7 @@ async function uint8ArrayToBase64(bytes: Uint8Array): Promise<string> {
   if (bytes.length === 0) {
     return "";
   }
-  return arrayBufferToBase64(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+  return arrayBufferToBase64((bytes.buffer as ArrayBuffer).slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
 }
 
 function base64ToUint8Array(value: string): Uint8Array {
