@@ -1,0 +1,15 @@
+name = "score-splitter-api"
+main = "src/worker.js"
+compatibility_date = "2023-05-18"
+
+[env.production]
+vars = { ENVIRONMENT = "production" }
+
+[[env.production.services]]
+binding = "BACKEND_API"
+service = "score-splitter-backend"
+
+[build]
+command = "npm run build"
+cwd = "."
+watch_dir = "src"

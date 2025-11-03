@@ -21,6 +21,15 @@ const baseUrl = resolveBaseUrl();
 const UPLOAD_ENDPOINT = `${baseUrl}/score.ScoreService/UploadScore`;
 const TRIM_ENDPOINT = `${baseUrl}/score.ScoreService/TrimScore`;
 
+// デバッグ情報をコンソールに出力
+console.log("API Configuration:", {
+  baseUrl,
+  UPLOAD_ENDPOINT,
+  TRIM_ENDPOINT,
+  env: import.meta.env.MODE,
+  viteApiBaseUrl: import.meta.env.VITE_API_BASE_URL,
+});
+
 export type UploadScoreParams = {
   title: string;
   file: File;
