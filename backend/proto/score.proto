@@ -7,6 +7,7 @@ option go_package = "score-splitter/backend/gen/go/score;score";
 service ScoreService {
   rpc UploadScore(UploadScoreRequest) returns (UploadScoreResponse);
   rpc TrimScore(TrimScoreRequest) returns (TrimScoreResponse);
+  rpc TrimScoreWithProgress(TrimScoreRequest) returns (stream TrimScoreProgressResponse);
   rpc SearchYoutubeVideos(SearchYoutubeVideosRequest) returns (SearchYoutubeVideosResponse);
   rpc GenerateScrollVideo(GenerateScrollVideoRequest) returns (GenerateScrollVideoResponse);
 }
@@ -40,12 +41,21 @@ message TrimScoreRequest {
   string password = 4;          // PDFのパスワード（必要な場合）
   repeated int32 include_pages = 5; // トリミング対象に含めるページ番号（1始まり）
   repeated PageTrimSetting page_settings = 6; // ページごとのトリミング設定
+  string orientation = 7;       // 出力向き（"portrait" or "landscape"）
 }
 
 message TrimScoreResponse {
   string message = 1;       // 結果メッセージ
   bytes trimmed_pdf = 2;    // 生成したPDF
   string filename = 3;      // 推奨ファイル名
+}
+
+message TrimScoreProgressResponse {
+  string stage = 1;         // 処理段階 ("parsing", "processing", "generating", "complete")
+  int32 progress = 2;       // 進捗パーセンテージ (0-100)
+  string message = 3;       // 進捗メッセージ
+  bytes trimmed_pdf = 4;    // 完了時のPDFデータ (stage="complete"時のみ)
+  string filename = 5;      // 完了時のファイル名 (stage="complete"時のみ)
 }
 
 message SearchYoutubeVideosRequest {

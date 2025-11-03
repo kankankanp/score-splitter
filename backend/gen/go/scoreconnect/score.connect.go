@@ -9,7 +9,7 @@ import (
 	context "context"
 	errors "errors"
 	http "net/http"
-	score "score-splitter/backend/gen/go/score"
+	score "score-splitter/backend/gen/go"
 	strings "strings"
 )
 
@@ -38,6 +38,9 @@ const (
 	ScoreServiceUploadScoreProcedure = "/score.ScoreService/UploadScore"
 	// ScoreServiceTrimScoreProcedure is the fully-qualified name of the ScoreService's TrimScore RPC.
 	ScoreServiceTrimScoreProcedure = "/score.ScoreService/TrimScore"
+	// ScoreServiceTrimScoreWithProgressProcedure is the fully-qualified name of the ScoreService's
+	// TrimScoreWithProgress RPC.
+	ScoreServiceTrimScoreWithProgressProcedure = "/score.ScoreService/TrimScoreWithProgress"
 	// ScoreServiceSearchYoutubeVideosProcedure is the fully-qualified name of the ScoreService's
 	// SearchYoutubeVideos RPC.
 	ScoreServiceSearchYoutubeVideosProcedure = "/score.ScoreService/SearchYoutubeVideos"
@@ -50,6 +53,7 @@ const (
 type ScoreServiceClient interface {
 	UploadScore(context.Context, *connect.Request[score.UploadScoreRequest]) (*connect.Response[score.UploadScoreResponse], error)
 	TrimScore(context.Context, *connect.Request[score.TrimScoreRequest]) (*connect.Response[score.TrimScoreResponse], error)
+	TrimScoreWithProgress(context.Context, *connect.Request[score.TrimScoreRequest]) (*connect.ServerStreamForClient[score.TrimScoreProgressResponse], error)
 	SearchYoutubeVideos(context.Context, *connect.Request[score.SearchYoutubeVideosRequest]) (*connect.Response[score.SearchYoutubeVideosResponse], error)
 	GenerateScrollVideo(context.Context, *connect.Request[score.GenerateScrollVideoRequest]) (*connect.Response[score.GenerateScrollVideoResponse], error)
 }
@@ -77,6 +81,12 @@ func NewScoreServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(scoreServiceMethods.ByName("TrimScore")),
 			connect.WithClientOptions(opts...),
 		),
+		trimScoreWithProgress: connect.NewClient[score.TrimScoreRequest, score.TrimScoreProgressResponse](
+			httpClient,
+			baseURL+ScoreServiceTrimScoreWithProgressProcedure,
+			connect.WithSchema(scoreServiceMethods.ByName("TrimScoreWithProgress")),
+			connect.WithClientOptions(opts...),
+		),
 		searchYoutubeVideos: connect.NewClient[score.SearchYoutubeVideosRequest, score.SearchYoutubeVideosResponse](
 			httpClient,
 			baseURL+ScoreServiceSearchYoutubeVideosProcedure,
@@ -94,10 +104,11 @@ func NewScoreServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 
 // scoreServiceClient implements ScoreServiceClient.
 type scoreServiceClient struct {
-	uploadScore         *connect.Client[score.UploadScoreRequest, score.UploadScoreResponse]
-	trimScore           *connect.Client[score.TrimScoreRequest, score.TrimScoreResponse]
-	searchYoutubeVideos *connect.Client[score.SearchYoutubeVideosRequest, score.SearchYoutubeVideosResponse]
-	generateScrollVideo *connect.Client[score.GenerateScrollVideoRequest, score.GenerateScrollVideoResponse]
+	uploadScore           *connect.Client[score.UploadScoreRequest, score.UploadScoreResponse]
+	trimScore             *connect.Client[score.TrimScoreRequest, score.TrimScoreResponse]
+	trimScoreWithProgress *connect.Client[score.TrimScoreRequest, score.TrimScoreProgressResponse]
+	searchYoutubeVideos   *connect.Client[score.SearchYoutubeVideosRequest, score.SearchYoutubeVideosResponse]
+	generateScrollVideo   *connect.Client[score.GenerateScrollVideoRequest, score.GenerateScrollVideoResponse]
 }
 
 // UploadScore calls score.ScoreService.UploadScore.
@@ -108,6 +119,11 @@ func (c *scoreServiceClient) UploadScore(ctx context.Context, req *connect.Reque
 // TrimScore calls score.ScoreService.TrimScore.
 func (c *scoreServiceClient) TrimScore(ctx context.Context, req *connect.Request[score.TrimScoreRequest]) (*connect.Response[score.TrimScoreResponse], error) {
 	return c.trimScore.CallUnary(ctx, req)
+}
+
+// TrimScoreWithProgress calls score.ScoreService.TrimScoreWithProgress.
+func (c *scoreServiceClient) TrimScoreWithProgress(ctx context.Context, req *connect.Request[score.TrimScoreRequest]) (*connect.ServerStreamForClient[score.TrimScoreProgressResponse], error) {
+	return c.trimScoreWithProgress.CallServerStream(ctx, req)
 }
 
 // SearchYoutubeVideos calls score.ScoreService.SearchYoutubeVideos.
@@ -124,6 +140,7 @@ func (c *scoreServiceClient) GenerateScrollVideo(ctx context.Context, req *conne
 type ScoreServiceHandler interface {
 	UploadScore(context.Context, *connect.Request[score.UploadScoreRequest]) (*connect.Response[score.UploadScoreResponse], error)
 	TrimScore(context.Context, *connect.Request[score.TrimScoreRequest]) (*connect.Response[score.TrimScoreResponse], error)
+	TrimScoreWithProgress(context.Context, *connect.Request[score.TrimScoreRequest], *connect.ServerStream[score.TrimScoreProgressResponse]) error
 	SearchYoutubeVideos(context.Context, *connect.Request[score.SearchYoutubeVideosRequest]) (*connect.Response[score.SearchYoutubeVideosResponse], error)
 	GenerateScrollVideo(context.Context, *connect.Request[score.GenerateScrollVideoRequest]) (*connect.Response[score.GenerateScrollVideoResponse], error)
 }
@@ -147,6 +164,12 @@ func NewScoreServiceHandler(svc ScoreServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(scoreServiceMethods.ByName("TrimScore")),
 		connect.WithHandlerOptions(opts...),
 	)
+	scoreServiceTrimScoreWithProgressHandler := connect.NewServerStreamHandler(
+		ScoreServiceTrimScoreWithProgressProcedure,
+		svc.TrimScoreWithProgress,
+		connect.WithSchema(scoreServiceMethods.ByName("TrimScoreWithProgress")),
+		connect.WithHandlerOptions(opts...),
+	)
 	scoreServiceSearchYoutubeVideosHandler := connect.NewUnaryHandler(
 		ScoreServiceSearchYoutubeVideosProcedure,
 		svc.SearchYoutubeVideos,
@@ -165,6 +188,8 @@ func NewScoreServiceHandler(svc ScoreServiceHandler, opts ...connect.HandlerOpti
 			scoreServiceUploadScoreHandler.ServeHTTP(w, r)
 		case ScoreServiceTrimScoreProcedure:
 			scoreServiceTrimScoreHandler.ServeHTTP(w, r)
+		case ScoreServiceTrimScoreWithProgressProcedure:
+			scoreServiceTrimScoreWithProgressHandler.ServeHTTP(w, r)
 		case ScoreServiceSearchYoutubeVideosProcedure:
 			scoreServiceSearchYoutubeVideosHandler.ServeHTTP(w, r)
 		case ScoreServiceGenerateScrollVideoProcedure:
@@ -184,6 +209,10 @@ func (UnimplementedScoreServiceHandler) UploadScore(context.Context, *connect.Re
 
 func (UnimplementedScoreServiceHandler) TrimScore(context.Context, *connect.Request[score.TrimScoreRequest]) (*connect.Response[score.TrimScoreResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("score.ScoreService.TrimScore is not implemented"))
+}
+
+func (UnimplementedScoreServiceHandler) TrimScoreWithProgress(context.Context, *connect.Request[score.TrimScoreRequest], *connect.ServerStream[score.TrimScoreProgressResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("score.ScoreService.TrimScoreWithProgress is not implemented"))
 }
 
 func (UnimplementedScoreServiceHandler) SearchYoutubeVideos(context.Context, *connect.Request[score.SearchYoutubeVideosRequest]) (*connect.Response[score.SearchYoutubeVideosResponse], error) {

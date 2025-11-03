@@ -253,6 +253,7 @@ type TrimScoreRequest struct {
 	Password      string                 `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`                                     // PDFのパスワード（必要な場合）
 	IncludePages  []int32                `protobuf:"varint,5,rep,packed,name=include_pages,json=includePages,proto3" json:"include_pages,omitempty"` // トリミング対象に含めるページ番号（1始まり）
 	PageSettings  []*PageTrimSetting     `protobuf:"bytes,6,rep,name=page_settings,json=pageSettings,proto3" json:"page_settings,omitempty"`         // ページごとのトリミング設定
+	Orientation   string                 `protobuf:"bytes,7,opt,name=orientation,proto3" json:"orientation,omitempty"`                               // 出力向き（"portrait" or "landscape"）
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -329,6 +330,13 @@ func (x *TrimScoreRequest) GetPageSettings() []*PageTrimSetting {
 	return nil
 }
 
+func (x *TrimScoreRequest) GetOrientation() string {
+	if x != nil {
+		return x.Orientation
+	}
+	return ""
+}
+
 type TrimScoreResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Message       string                 `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`                         // 結果メッセージ
@@ -389,6 +397,82 @@ func (x *TrimScoreResponse) GetFilename() string {
 	return ""
 }
 
+type TrimScoreProgressResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Stage         string                 `protobuf:"bytes,1,opt,name=stage,proto3" json:"stage,omitempty"`                             // 処理段階 ("parsing", "processing", "generating", "complete")
+	Progress      int32                  `protobuf:"varint,2,opt,name=progress,proto3" json:"progress,omitempty"`                      // 進捗パーセンテージ (0-100)
+	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`                         // 進捗メッセージ
+	TrimmedPdf    []byte                 `protobuf:"bytes,4,opt,name=trimmed_pdf,json=trimmedPdf,proto3" json:"trimmed_pdf,omitempty"` // 完了時のPDFデータ (stage="complete"時のみ)
+	Filename      string                 `protobuf:"bytes,5,opt,name=filename,proto3" json:"filename,omitempty"`                       // 完了時のファイル名 (stage="complete"時のみ)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TrimScoreProgressResponse) Reset() {
+	*x = TrimScoreProgressResponse{}
+	mi := &file_score_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TrimScoreProgressResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TrimScoreProgressResponse) ProtoMessage() {}
+
+func (x *TrimScoreProgressResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_score_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TrimScoreProgressResponse.ProtoReflect.Descriptor instead.
+func (*TrimScoreProgressResponse) Descriptor() ([]byte, []int) {
+	return file_score_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *TrimScoreProgressResponse) GetStage() string {
+	if x != nil {
+		return x.Stage
+	}
+	return ""
+}
+
+func (x *TrimScoreProgressResponse) GetProgress() int32 {
+	if x != nil {
+		return x.Progress
+	}
+	return 0
+}
+
+func (x *TrimScoreProgressResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *TrimScoreProgressResponse) GetTrimmedPdf() []byte {
+	if x != nil {
+		return x.TrimmedPdf
+	}
+	return nil
+}
+
+func (x *TrimScoreProgressResponse) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
 type SearchYoutubeVideosRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Query         string                 `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"` // 検索キーワード
@@ -398,7 +482,7 @@ type SearchYoutubeVideosRequest struct {
 
 func (x *SearchYoutubeVideosRequest) Reset() {
 	*x = SearchYoutubeVideosRequest{}
-	mi := &file_score_proto_msgTypes[6]
+	mi := &file_score_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -410,7 +494,7 @@ func (x *SearchYoutubeVideosRequest) String() string {
 func (*SearchYoutubeVideosRequest) ProtoMessage() {}
 
 func (x *SearchYoutubeVideosRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_score_proto_msgTypes[6]
+	mi := &file_score_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -423,7 +507,7 @@ func (x *SearchYoutubeVideosRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchYoutubeVideosRequest.ProtoReflect.Descriptor instead.
 func (*SearchYoutubeVideosRequest) Descriptor() ([]byte, []int) {
-	return file_score_proto_rawDescGZIP(), []int{6}
+	return file_score_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *SearchYoutubeVideosRequest) GetQuery() string {
@@ -444,7 +528,7 @@ type YoutubeVideo struct {
 
 func (x *YoutubeVideo) Reset() {
 	*x = YoutubeVideo{}
-	mi := &file_score_proto_msgTypes[7]
+	mi := &file_score_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -456,7 +540,7 @@ func (x *YoutubeVideo) String() string {
 func (*YoutubeVideo) ProtoMessage() {}
 
 func (x *YoutubeVideo) ProtoReflect() protoreflect.Message {
-	mi := &file_score_proto_msgTypes[7]
+	mi := &file_score_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -469,7 +553,7 @@ func (x *YoutubeVideo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use YoutubeVideo.ProtoReflect.Descriptor instead.
 func (*YoutubeVideo) Descriptor() ([]byte, []int) {
-	return file_score_proto_rawDescGZIP(), []int{7}
+	return file_score_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *YoutubeVideo) GetVideoId() string {
@@ -502,7 +586,7 @@ type SearchYoutubeVideosResponse struct {
 
 func (x *SearchYoutubeVideosResponse) Reset() {
 	*x = SearchYoutubeVideosResponse{}
-	mi := &file_score_proto_msgTypes[8]
+	mi := &file_score_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -514,7 +598,7 @@ func (x *SearchYoutubeVideosResponse) String() string {
 func (*SearchYoutubeVideosResponse) ProtoMessage() {}
 
 func (x *SearchYoutubeVideosResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_score_proto_msgTypes[8]
+	mi := &file_score_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -527,7 +611,7 @@ func (x *SearchYoutubeVideosResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchYoutubeVideosResponse.ProtoReflect.Descriptor instead.
 func (*SearchYoutubeVideosResponse) Descriptor() ([]byte, []int) {
-	return file_score_proto_rawDescGZIP(), []int{8}
+	return file_score_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SearchYoutubeVideosResponse) GetVideos() []*YoutubeVideo {
@@ -552,7 +636,7 @@ type GenerateScrollVideoRequest struct {
 
 func (x *GenerateScrollVideoRequest) Reset() {
 	*x = GenerateScrollVideoRequest{}
-	mi := &file_score_proto_msgTypes[9]
+	mi := &file_score_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -564,7 +648,7 @@ func (x *GenerateScrollVideoRequest) String() string {
 func (*GenerateScrollVideoRequest) ProtoMessage() {}
 
 func (x *GenerateScrollVideoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_score_proto_msgTypes[9]
+	mi := &file_score_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -577,7 +661,7 @@ func (x *GenerateScrollVideoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerateScrollVideoRequest.ProtoReflect.Descriptor instead.
 func (*GenerateScrollVideoRequest) Descriptor() ([]byte, []int) {
-	return file_score_proto_rawDescGZIP(), []int{9}
+	return file_score_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GenerateScrollVideoRequest) GetTitle() string {
@@ -641,7 +725,7 @@ type GenerateScrollVideoResponse struct {
 
 func (x *GenerateScrollVideoResponse) Reset() {
 	*x = GenerateScrollVideoResponse{}
-	mi := &file_score_proto_msgTypes[10]
+	mi := &file_score_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -653,7 +737,7 @@ func (x *GenerateScrollVideoResponse) String() string {
 func (*GenerateScrollVideoResponse) ProtoMessage() {}
 
 func (x *GenerateScrollVideoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_score_proto_msgTypes[10]
+	mi := &file_score_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -666,7 +750,7 @@ func (x *GenerateScrollVideoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerateScrollVideoResponse.ProtoReflect.Descriptor instead.
 func (*GenerateScrollVideoResponse) Descriptor() ([]byte, []int) {
-	return file_score_proto_rawDescGZIP(), []int{10}
+	return file_score_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GenerateScrollVideoResponse) GetMessage() string {
@@ -716,19 +800,27 @@ const file_score_proto_rawDesc = "" +
 	"\x0fPageTrimSetting\x12\x1f\n" +
 	"\vpage_number\x18\x01 \x01(\x05R\n" +
 	"pageNumber\x12%\n" +
-	"\x05areas\x18\x02 \x03(\v2\x0f.score.CropAreaR\x05areas\"\xe8\x01\n" +
+	"\x05areas\x18\x02 \x03(\v2\x0f.score.CropAreaR\x05areas\"\x8a\x02\n" +
 	"\x10TrimScoreRequest\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x19\n" +
 	"\bpdf_file\x18\x02 \x01(\fR\apdfFile\x12%\n" +
 	"\x05areas\x18\x03 \x03(\v2\x0f.score.CropAreaR\x05areas\x12\x1a\n" +
 	"\bpassword\x18\x04 \x01(\tR\bpassword\x12#\n" +
 	"\rinclude_pages\x18\x05 \x03(\x05R\fincludePages\x12;\n" +
-	"\rpage_settings\x18\x06 \x03(\v2\x16.score.PageTrimSettingR\fpageSettings\"j\n" +
+	"\rpage_settings\x18\x06 \x03(\v2\x16.score.PageTrimSettingR\fpageSettings\x12 \n" +
+	"\vorientation\x18\a \x01(\tR\vorientation\"j\n" +
 	"\x11TrimScoreResponse\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage\x12\x1f\n" +
 	"\vtrimmed_pdf\x18\x02 \x01(\fR\n" +
 	"trimmedPdf\x12\x1a\n" +
-	"\bfilename\x18\x03 \x01(\tR\bfilename\"2\n" +
+	"\bfilename\x18\x03 \x01(\tR\bfilename\"\xa4\x01\n" +
+	"\x19TrimScoreProgressResponse\x12\x14\n" +
+	"\x05stage\x18\x01 \x01(\tR\x05stage\x12\x1a\n" +
+	"\bprogress\x18\x02 \x01(\x05R\bprogress\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\x12\x1f\n" +
+	"\vtrimmed_pdf\x18\x04 \x01(\fR\n" +
+	"trimmedPdf\x12\x1a\n" +
+	"\bfilename\x18\x05 \x01(\tR\bfilename\"2\n" +
 	"\x1aSearchYoutubeVideosRequest\x12\x14\n" +
 	"\x05query\x18\x01 \x01(\tR\x05query\"d\n" +
 	"\fYoutubeVideo\x12\x19\n" +
@@ -751,10 +843,11 @@ const file_score_proto_rawDesc = "" +
 	"\n" +
 	"video_data\x18\x02 \x01(\fR\tvideoData\x12\x1a\n" +
 	"\bfilename\x18\x03 \x01(\tR\bfilename\x12)\n" +
-	"\x10duration_seconds\x18\x04 \x01(\x05R\x0fdurationSeconds2\xd0\x02\n" +
+	"\x10duration_seconds\x18\x04 \x01(\x05R\x0fdurationSeconds2\xa6\x03\n" +
 	"\fScoreService\x12D\n" +
 	"\vUploadScore\x12\x19.score.UploadScoreRequest\x1a\x1a.score.UploadScoreResponse\x12>\n" +
-	"\tTrimScore\x12\x17.score.TrimScoreRequest\x1a\x18.score.TrimScoreResponse\x12\\\n" +
+	"\tTrimScore\x12\x17.score.TrimScoreRequest\x1a\x18.score.TrimScoreResponse\x12T\n" +
+	"\x15TrimScoreWithProgress\x12\x17.score.TrimScoreRequest\x1a .score.TrimScoreProgressResponse0\x01\x12\\\n" +
 	"\x13SearchYoutubeVideos\x12!.score.SearchYoutubeVideosRequest\x1a\".score.SearchYoutubeVideosResponse\x12\\\n" +
 	"\x13GenerateScrollVideo\x12!.score.GenerateScrollVideoRequest\x1a\".score.GenerateScrollVideoResponseB+Z)score-splitter/backend/gen/go/score;scoreb\x06proto3"
 
@@ -770,7 +863,7 @@ func file_score_proto_rawDescGZIP() []byte {
 	return file_score_proto_rawDescData
 }
 
-var file_score_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_score_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_score_proto_goTypes = []any{
 	(*UploadScoreRequest)(nil),          // 0: score.UploadScoreRequest
 	(*UploadScoreResponse)(nil),         // 1: score.UploadScoreResponse
@@ -778,27 +871,30 @@ var file_score_proto_goTypes = []any{
 	(*PageTrimSetting)(nil),             // 3: score.PageTrimSetting
 	(*TrimScoreRequest)(nil),            // 4: score.TrimScoreRequest
 	(*TrimScoreResponse)(nil),           // 5: score.TrimScoreResponse
-	(*SearchYoutubeVideosRequest)(nil),  // 6: score.SearchYoutubeVideosRequest
-	(*YoutubeVideo)(nil),                // 7: score.YoutubeVideo
-	(*SearchYoutubeVideosResponse)(nil), // 8: score.SearchYoutubeVideosResponse
-	(*GenerateScrollVideoRequest)(nil),  // 9: score.GenerateScrollVideoRequest
-	(*GenerateScrollVideoResponse)(nil), // 10: score.GenerateScrollVideoResponse
+	(*TrimScoreProgressResponse)(nil),   // 6: score.TrimScoreProgressResponse
+	(*SearchYoutubeVideosRequest)(nil),  // 7: score.SearchYoutubeVideosRequest
+	(*YoutubeVideo)(nil),                // 8: score.YoutubeVideo
+	(*SearchYoutubeVideosResponse)(nil), // 9: score.SearchYoutubeVideosResponse
+	(*GenerateScrollVideoRequest)(nil),  // 10: score.GenerateScrollVideoRequest
+	(*GenerateScrollVideoResponse)(nil), // 11: score.GenerateScrollVideoResponse
 }
 var file_score_proto_depIdxs = []int32{
 	2,  // 0: score.PageTrimSetting.areas:type_name -> score.CropArea
 	2,  // 1: score.TrimScoreRequest.areas:type_name -> score.CropArea
 	3,  // 2: score.TrimScoreRequest.page_settings:type_name -> score.PageTrimSetting
-	7,  // 3: score.SearchYoutubeVideosResponse.videos:type_name -> score.YoutubeVideo
+	8,  // 3: score.SearchYoutubeVideosResponse.videos:type_name -> score.YoutubeVideo
 	0,  // 4: score.ScoreService.UploadScore:input_type -> score.UploadScoreRequest
 	4,  // 5: score.ScoreService.TrimScore:input_type -> score.TrimScoreRequest
-	6,  // 6: score.ScoreService.SearchYoutubeVideos:input_type -> score.SearchYoutubeVideosRequest
-	9,  // 7: score.ScoreService.GenerateScrollVideo:input_type -> score.GenerateScrollVideoRequest
-	1,  // 8: score.ScoreService.UploadScore:output_type -> score.UploadScoreResponse
-	5,  // 9: score.ScoreService.TrimScore:output_type -> score.TrimScoreResponse
-	8,  // 10: score.ScoreService.SearchYoutubeVideos:output_type -> score.SearchYoutubeVideosResponse
-	10, // 11: score.ScoreService.GenerateScrollVideo:output_type -> score.GenerateScrollVideoResponse
-	8,  // [8:12] is the sub-list for method output_type
-	4,  // [4:8] is the sub-list for method input_type
+	4,  // 6: score.ScoreService.TrimScoreWithProgress:input_type -> score.TrimScoreRequest
+	7,  // 7: score.ScoreService.SearchYoutubeVideos:input_type -> score.SearchYoutubeVideosRequest
+	10, // 8: score.ScoreService.GenerateScrollVideo:input_type -> score.GenerateScrollVideoRequest
+	1,  // 9: score.ScoreService.UploadScore:output_type -> score.UploadScoreResponse
+	5,  // 10: score.ScoreService.TrimScore:output_type -> score.TrimScoreResponse
+	6,  // 11: score.ScoreService.TrimScoreWithProgress:output_type -> score.TrimScoreProgressResponse
+	9,  // 12: score.ScoreService.SearchYoutubeVideos:output_type -> score.SearchYoutubeVideosResponse
+	11, // 13: score.ScoreService.GenerateScrollVideo:output_type -> score.GenerateScrollVideoResponse
+	9,  // [9:14] is the sub-list for method output_type
+	4,  // [4:9] is the sub-list for method input_type
 	4,  // [4:4] is the sub-list for extension type_name
 	4,  // [4:4] is the sub-list for extension extendee
 	0,  // [0:4] is the sub-list for field type_name
@@ -815,7 +911,7 @@ func file_score_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_score_proto_rawDesc), len(file_score_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

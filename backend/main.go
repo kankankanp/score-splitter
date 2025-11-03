@@ -15,8 +15,8 @@ import (
 	"sort"
 	"strings"
 
-	"score-splitter/backend/gen/go/score"
-	"score-splitter/backend/gen/go/score/scoreconnect"
+	score "score-splitter/backend/gen/go"
+	"score-splitter/backend/gen/go/scoreconnect"
 
 	"connectrpc.com/connect"
 	pdfapi "github.com/pdfcpu/pdfcpu/pkg/api"
@@ -135,6 +135,127 @@ func (s *scoreService) TrimScore(
 	})
 
 	return res, nil
+}
+
+// TrimScoreWithProgress はプログレス情報付きでPDFトリミングを実行します
+func (s *scoreService) TrimScoreWithProgress(
+	ctx context.Context,
+	req *connect.Request[score.TrimScoreRequest],
+	stream *connect.ServerStream[score.TrimScoreProgressResponse],
+) error {
+	_ = ctx
+
+	log.Printf(
+		"TrimScoreWithProgress request: title=%s pdfBytes=%d areas=%d pageSettings=%d orientation=%s",
+		req.Msg.GetTitle(),
+		len(req.Msg.GetPdfFile()),
+		len(req.Msg.GetAreas()),
+		len(req.Msg.GetPageSettings()),
+		req.Msg.GetOrientation(),
+	)
+
+	// 段階1: PDFファイル検証
+	if err := stream.Send(&score.TrimScoreProgressResponse{
+		Stage:    "parsing",
+		Progress: 10,
+		Message:  "PDFファイルを検証しています...",
+	}); err != nil {
+		return err
+	}
+
+	pdfBytes := req.Msg.GetPdfFile()
+	if len(pdfBytes) == 0 {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("PDFファイルが空です"))
+	}
+
+	// 段階2: トリミングエリア正規化
+	if err := stream.Send(&score.TrimScoreProgressResponse{
+		Stage:    "parsing",
+		Progress: 25,
+		Message:  "トリミングエリアを処理しています...",
+	}); err != nil {
+		return err
+	}
+
+	defaultAreas, err := normalizeAreas(req.Msg.GetAreas())
+	if err != nil {
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	pageOverrides := make(map[int][]normalizedArea)
+	for _, setting := range req.Msg.GetPageSettings() {
+		if setting == nil {
+			continue
+		}
+		pageNumber := int(setting.GetPageNumber())
+		if pageNumber < 1 {
+			return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("ページ番号%vが無効です", setting.GetPageNumber()))
+		}
+		areas := setting.GetAreas()
+		if len(areas) == 0 {
+			continue
+		}
+		normalizedOverride, errNormalize := normalizeAreas(areas)
+		if errNormalize != nil {
+			return connect.NewError(connect.CodeInvalidArgument, errNormalize)
+		}
+		if len(normalizedOverride) == 0 {
+			continue
+		}
+		pageOverrides[pageNumber] = normalizedOverride
+	}
+
+	if len(defaultAreas) == 0 && len(pageOverrides) == 0 {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("トリミングエリアがありません"))
+	}
+
+	// 段階3: PDF処理開始
+	if err := stream.Send(&score.TrimScoreProgressResponse{
+		Stage:    "processing",
+		Progress: 40,
+		Message:  "PDFページを処理しています...",
+	}); err != nil {
+		return err
+	}
+
+	// プログレス付きでPDF処理
+	trimmed, err := buildTrimmedPDFWithProgress(
+		pdfBytes,
+		defaultAreas,
+		req.Msg.GetIncludePages(),
+		req.Msg.GetPassword(),
+		pageOverrides,
+		req.Msg.GetOrientation(),
+		stream,
+	)
+	if err != nil {
+		if errors.Is(err, pdfcpu.ErrWrongPassword) {
+			return connect.NewError(connect.CodeInvalidArgument, errors.New("PDFのパスワードが正しくありません"))
+		}
+		return connect.NewError(connect.CodeInternal, err)
+	}
+
+	// 段階4: 完了
+	filename := deriveFilename(req.Msg.GetTitle())
+	orientationSuffix := ""
+	if req.Msg.GetOrientation() == "landscape" {
+		orientationSuffix = "-landscape"
+	}
+	if orientationSuffix != "" {
+		filename = strings.Replace(filename, ".pdf", orientationSuffix+".pdf", 1)
+	}
+
+	if err := stream.Send(&score.TrimScoreProgressResponse{
+		Stage:       "complete",
+		Progress:    100,
+		Message:     "トリミング済みPDFを生成しました",
+		TrimmedPdf:  trimmed,
+		Filename:    filename,
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // SearchYoutubeVideos は削除された機能のスタブ
@@ -338,6 +459,164 @@ func buildTrimmedPDF(
 	return out.Bytes(), nil
 }
 
+// buildTrimmedPDFWithProgress はプログレス情報を送信しながらPDFを処理します
+func buildTrimmedPDFWithProgress(
+	pdfBytes []byte,
+	defaultAreas []normalizedArea,
+	includePages []int32,
+	password string,
+	pageOverrides map[int][]normalizedArea,
+	orientation string,
+	stream *connect.ServerStream[score.TrimScoreProgressResponse],
+) ([]byte, error) {
+	if len(defaultAreas) == 0 && len(pageOverrides) == 0 {
+		return nil, errors.New("トリミングエリアがありません")
+	}
+
+	// PDFコンテキスト作成
+	if err := stream.Send(&score.TrimScoreProgressResponse{
+		Stage:    "processing",
+		Progress: 45,
+		Message:  "PDFを解析しています...",
+	}); err != nil {
+		return nil, err
+	}
+
+	conf := model.NewDefaultConfiguration()
+	if password != "" {
+		conf.UserPW = password
+		conf.OwnerPW = password
+	}
+	ctx, err := pdfapi.ReadValidateAndOptimize(bytes.NewReader(pdfBytes), conf)
+	if err != nil {
+		return nil, err
+	}
+	if err := ctx.EnsurePageCount(); err != nil {
+		return nil, err
+	}
+
+	if ctx.PageCount == 0 {
+		return nil, errors.New("PDFにページがありません")
+	}
+
+	// ページ範囲解決
+	if err := stream.Send(&score.TrimScoreProgressResponse{
+		Stage:    "processing",
+		Progress: 50,
+		Message:  "処理対象ページを決定しています...",
+	}); err != nil {
+		return nil, err
+	}
+
+	pagesToProcess, err := resolvePagesToProcess(ctx.PageCount, includePages)
+	if err != nil {
+		return nil, err
+	}
+
+	for pageNumber := range pageOverrides {
+		if pageNumber < 1 || pageNumber > ctx.PageCount {
+			return nil, fmt.Errorf("ページ%vの設定がPDFの範囲外です", pageNumber)
+		}
+	}
+
+	var segments [][]byte
+	totalPages := len(pagesToProcess)
+
+	// 各ページを処理
+	for i, pageIndex := range pagesToProcess {
+		progress := 55 + int(float64(i)/float64(totalPages)*25) // 55-80%の範囲
+		if err := stream.Send(&score.TrimScoreProgressResponse{
+			Stage:    "processing",
+			Progress: int32(progress),
+			Message:  fmt.Sprintf("ページ %d/%d を処理しています...", i+1, totalPages),
+		}); err != nil {
+			return nil, err
+		}
+
+		areasForPage := pageOverrides[pageIndex]
+		if len(areasForPage) == 0 {
+			areasForPage = defaultAreas
+		}
+		if len(areasForPage) == 0 {
+			return nil, fmt.Errorf("ページ%vのトリミングエリアがありません", pageIndex)
+		}
+
+		_, _, inh, err := ctx.PageDict(pageIndex, false)
+		if err != nil {
+			return nil, err
+		}
+
+		cropBox := inh.CropBox
+		if cropBox == nil {
+			cropBox = inh.MediaBox
+		}
+		if cropBox == nil {
+			return nil, fmt.Errorf("ページ%vのサイズ情報を取得できません", pageIndex)
+		}
+
+		for _, area := range areasForPage {
+			rect, err := rectFromArea(cropBox, area)
+			if err != nil {
+				return nil, err
+			}
+
+			trimmed, err := extractTrimmedSegment(ctx, pageIndex, rect)
+			if err != nil {
+				return nil, err
+			}
+			segments = append(segments, trimmed)
+		}
+	}
+
+	if len(segments) == 0 {
+		return nil, errors.New("トリミング後のページを生成できませんでした")
+	}
+
+	// PDF生成
+	if err := stream.Send(&score.TrimScoreProgressResponse{
+		Stage:    "generating",
+		Progress: 85,
+		Message:  "PDFを生成しています...",
+	}); err != nil {
+		return nil, err
+	}
+
+	var result []byte
+	if len(segments) == 1 {
+		result = segments[0]
+	} else {
+		readers := make([]io.ReadSeeker, len(segments))
+		for i, data := range segments {
+			readers[i] = bytes.NewReader(data)
+		}
+
+		var out bytes.Buffer
+		mergeConf := model.NewDefaultConfiguration()
+		if err := pdfapi.MergeRaw(readers, &out, false, mergeConf); err != nil {
+			return nil, err
+		}
+		result = out.Bytes()
+	}
+
+	// 横向き変換
+	if orientation == "landscape" {
+		if err := stream.Send(&score.TrimScoreProgressResponse{
+			Stage:    "generating",
+			Progress: 95,
+			Message:  "スライド形式に変換しています...",
+		}); err != nil {
+			return nil, err
+		}
+
+		result, err = rotatePDFToLandscape(result)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return result, nil
+}
+
 func rectFromArea(pageBox *types.Rectangle, area normalizedArea) (*types.Rectangle, error) {
 	width := pageBox.Width()
 	height := pageBox.Height()
@@ -500,4 +779,50 @@ func main() {
 	if err := http.ListenAndServe(":8085", mux); err != nil {
 		log.Fatalf("server stopped: %v", err)
 	}
+}
+
+// rotatePDFToLandscape はトリミング済みページを横向きスライド形式のPDFに変換します
+func rotatePDFToLandscape(pdfBytes []byte) ([]byte, error) {
+	log.Printf("Converting PDF to landscape slide format (4 pages per slide)")
+	
+	conf := model.NewDefaultConfiguration()
+	ctx, err := pdfapi.ReadValidateAndOptimize(bytes.NewReader(pdfBytes), conf)
+	if err != nil {
+		return nil, err
+	}
+	if err := ctx.EnsurePageCount(); err != nil {
+		return nil, err
+	}
+
+	log.Printf("Creating landscape slides from %d pages", ctx.PageCount)
+	
+	// 各ページを画像として抽出し、4つずつスライドに配置
+	return createSlidesFromPages(ctx)
+}
+
+// createSlidesFromPages は pdfcpu の NUp 機能を使用してスライドを作成します
+func createSlidesFromPages(ctx *model.Context) ([]byte, error) {
+	// 4アップ（2x2）グリッド設定を作成
+	conf := model.NewDefaultConfiguration()
+	nUpConfig, err := pdfapi.PDFGridConfig(2, 2, "A4L", conf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create NUp config: %v", err)
+	}
+	
+	log.Printf("Creating %d slides from %d pages using 2x2 grid", 
+		(ctx.PageCount + 3) / 4, ctx.PageCount)
+	
+	// 元のPDFを一時ファイルに書き出し
+	var inBuf bytes.Buffer
+	if err := pdfapi.WriteContext(ctx, &inBuf); err != nil {
+		return nil, err
+	}
+	
+	// NUp処理を実行
+	var outBuf bytes.Buffer
+	if err := pdfapi.NUp(bytes.NewReader(inBuf.Bytes()), &outBuf, nil, nil, nUpConfig, conf); err != nil {
+		return nil, fmt.Errorf("failed to create NUp layout: %v", err)
+	}
+	
+	return outBuf.Bytes(), nil
 }

@@ -141,6 +141,12 @@ function TrimEditor(): ReactElement {
     useState<string>("");
   const [passwordValue, setPasswordValue] = useState<string>("");
   const [pdfPassword, setPdfPassword] = useState<string | null>(null);
+  const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
+  const [trimProgress, setTrimProgress] = useState<{
+    stage: string;
+    progress: number;
+    message: string;
+  } | null>(null);
 
   const pdfDocumentRef = useRef<PDFDocumentProxy | null>(null);
   const pageContainerRef = useRef<HTMLDivElement | null>(null);
@@ -174,6 +180,8 @@ function TrimEditor(): ReactElement {
     setPasswordPromptMessage("");
     setPasswordValue("");
     setPdfPassword(null);
+    setOrientation("portrait");
+    setTrimProgress(null);
   }, [setPracticeData]);
 
   useEffect(() => {
@@ -884,6 +892,10 @@ function TrimEditor(): ReactElement {
         })),
         includePages: includePageNumbers,
         pageSettings: pageSettingsPayload,
+        orientation,
+        onProgress: (progress) => {
+          setTrimProgress(progress);
+        },
       });
 
       setPracticeData({
@@ -924,6 +936,7 @@ function TrimEditor(): ReactElement {
       }
     } finally {
       setGenerating(false);
+      setTrimProgress(null);
     }
   }, [
     availablePages,
@@ -1015,6 +1028,29 @@ function TrimEditor(): ReactElement {
       {statusMessage && (
         <div className="rounded-2xl border border-emerald-400 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">
           {statusMessage}
+        </div>
+      )}
+      
+      {trimProgress && (
+        <div className="rounded-2xl border border-blue-400 bg-blue-50 px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-blue-900">
+              {trimProgress.stage === "parsing" && "解析中"}
+              {trimProgress.stage === "processing" && "処理中"}
+              {trimProgress.stage === "generating" && "生成中"}
+              {trimProgress.stage === "complete" && "完了"}
+            </h3>
+            <span className="text-sm font-medium text-blue-800">
+              {trimProgress.progress}%
+            </span>
+          </div>
+          <div className="w-full bg-blue-200 rounded-full h-2 mb-2">
+            <div 
+              className="bg-blue-500 h-2 rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${trimProgress.progress}%` }}
+            />
+          </div>
+          <p className="text-sm text-blue-800">{trimProgress.message}</p>
         </div>
       )}
 

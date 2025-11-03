@@ -62,6 +62,14 @@ export type TrimScoreParams = {
   password?: string;
   includePages?: number[];
   pageSettings?: PageTrimSetting[];
+  orientation?: "portrait" | "landscape";
+  onProgress?: (progress: TrimScoreProgress) => void;
+};
+
+export type TrimScoreProgress = {
+  stage: string;
+  progress: number;
+  message: string;
 };
 
 export type TrimScoreResponse = {
@@ -161,11 +169,28 @@ export async function trimScore({
   password,
   includePages,
   pageSettings,
+  orientation = "portrait",
+  onProgress,
 }: TrimScoreParams): Promise<TrimScoreResponse> {
   if (areas.length === 0 && (!pageSettings || pageSettings.length === 0)) {
     throw new Error("トリミングエリアを指定してください");
   }
 
+  // プログレスコールバックがある場合はストリーミングAPIを使用
+  if (onProgress) {
+    return trimScoreWithProgress({
+      title,
+      pdfBytes,
+      areas,
+      password,
+      includePages,
+      pageSettings,
+      orientation,
+      onProgress,
+    });
+  }
+
+  // 従来のAPIを使用（プログレスなし）
   const payload: {
     title: string;
     pdfFile: string;
@@ -173,6 +198,7 @@ export async function trimScore({
     password?: string;
     includePages?: number[];
     pageSettings?: PageTrimSettingPayload[];
+    orientation?: string;
   } = {
     title,
     pdfFile: await uint8ArrayToBase64(pdfBytes),
@@ -291,6 +317,140 @@ export async function trimScore({
     filename: body.filename || "trimmed-score.pdf",
     pdfData,
   };
+}
+
+// ストリーミングAPIを使用してプログレス付きでトリミングを実行
+async function trimScoreWithProgress({
+  title,
+  pdfBytes,
+  areas,
+  password,
+  includePages,
+  pageSettings,
+  orientation = "portrait",
+  onProgress,
+}: TrimScoreParams): Promise<TrimScoreResponse> {
+  const payload: {
+    title: string;
+    pdfFile: string;
+    areas: CropAreaPayload[];
+    orientation: string;
+    password?: string;
+    includePages?: number[];
+    pageSettings?: PageTrimSettingPayload[];
+  } = {
+    title,
+    pdfFile: await uint8ArrayToBase64(pdfBytes),
+    areas: areas.map((area) => ({
+      top: area.top,
+      left: area.left,
+      width: area.width,
+      height: area.height,
+    })),
+    orientation,
+  };
+
+  if (password && password.trim().length > 0) {
+    payload.password = password.trim();
+  }
+
+  if (includePages && includePages.length > 0) {
+    payload.includePages = includePages;
+  }
+
+  if (pageSettings && pageSettings.length > 0) {
+    payload.pageSettings = pageSettings.map((setting) => ({
+      pageNumber: setting.pageNumber,
+      areas: setting.areas.map((area) => ({
+        top: area.top,
+        left: area.left,
+        width: area.width,
+        height: area.height,
+      })),
+    }));
+  }
+
+  if (payload.pdfFile.length === 0) {
+    console.error("PDF base64 is empty", {
+      title,
+      pdfBytesLength: pdfBytes.length,
+      areasCount: areas.length,
+    });
+    throw new Error("PDFの内容を読み取れませんでした");
+  }
+
+  const endpoint = `${baseUrl}/score.ScoreService/TrimScoreWithProgress`;
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Connect-Protocol-Version": "1",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.body) {
+    throw new Error("ストリーミングレスポンスが取得できませんでした");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalResult: TrimScoreResponse | null = null;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      
+      // 改行区切りでメッセージを分割
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || ""; // 最後の不完全な行はバッファに保持
+
+      for (const line of lines) {
+        if (line.trim() === "") continue;
+
+        try {
+          const data = JSON.parse(line);
+          
+          if (data.stage && data.progress !== undefined) {
+            // プログレス情報をコールバックで通知
+            onProgress?.({
+              stage: data.stage,
+              progress: data.progress,
+              message: data.message || "",
+            });
+
+            // 完了時のデータを保存
+            if (data.stage === "complete" && data.trimmedPdf) {
+              const pdfData = base64ToUint8Array(data.trimmedPdf);
+              finalResult = {
+                message: data.message || "トリミングが完了しました",
+                filename: data.filename || "trimmed-score.pdf",
+                pdfData,
+              };
+            }
+          } else if (data.code && data.message) {
+            // エラーレスポンス
+            throw new Error(data.message);
+          }
+        } catch (parseError) {
+          console.warn("Failed to parse streaming response:", line, parseError);
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  if (!finalResult) {
+    throw new Error("ストリーミング処理が完了しませんでした");
+  }
+
+  return finalResult;
 }
 
 type CropAreaPayload = {
