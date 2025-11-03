@@ -147,6 +147,10 @@ function TrimEditor(): ReactElement {
     progress: number;
     message: string;
   } | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{
+    progress: number;
+    message: string;
+  } | null>(null);
 
   const pdfDocumentRef = useRef<PDFDocumentProxy | null>(null);
   const pageContainerRef = useRef<HTMLDivElement | null>(null);
@@ -182,6 +186,7 @@ function TrimEditor(): ReactElement {
     setPdfPassword(null);
     setOrientation("portrait");
     setTrimProgress(null);
+    setUploadProgress(null);
   }, [setPracticeData]);
 
   useEffect(() => {
@@ -264,16 +269,22 @@ function TrimEditor(): ReactElement {
       resetState();
       setPdfName(file.name);
       setLoadingMessage("PDFを読み込んでいます…");
+      
+      // アップロード進捗をシミュレート
+      setUploadProgress({ progress: 10, message: "ファイルを読み込んでいます..." });
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       passwordCancelledRef.current = false;
 
       try {
+        setUploadProgress({ progress: 30, message: "PDFファイルを解析中..." });
         const arrayBuffer = await file.arrayBuffer();
         const bytes = new Uint8Array(arrayBuffer);
         const storedBytes = new Uint8Array(bytes);
         setPdfBytes(storedBytes);
         setExcludedPageNumbers([]);
 
+        setUploadProgress({ progress: 50, message: "PDFを読み込んでいます..." });
         const loadingTask = getDocument({ data: bytes });
         loadingTask.onPassword = (
           updatePassword: (arg0: string) => void,
@@ -298,12 +309,20 @@ function TrimEditor(): ReactElement {
             setErrorMessage("パスワード入力をキャンセルしました");
           });
         };
+        setUploadProgress({ progress: 70, message: "ページプレビューを生成中..." });
         const doc = await loadingTask.promise;
         pdfDocumentRef.current = doc;
 
         const previews: PdfPagePreview[] = [];
 
         for (let index = 1; index <= doc.numPages; index += 1) {
+          // プレビュー生成の進捗更新
+          const previewProgress = 70 + Math.floor((index / doc.numPages) * 25);
+          setUploadProgress({ 
+            progress: previewProgress, 
+            message: `ページ ${index}/${doc.numPages} のプレビューを生成中...` 
+          });
+          
           const page = await doc.getPage(index);
           const viewport = page.getViewport({ scale: 1 });
           const targetWidth = 180;
@@ -337,6 +356,13 @@ function TrimEditor(): ReactElement {
         setActiveAreaId(initialArea.id);
         setStatusMessage("");
         setErrorMessage("");
+        
+        setUploadProgress({ progress: 100, message: "PDFの読み込みが完了しました" });
+        
+        // 成功メッセージを2秒後に自動的に消す
+        setTimeout(() => {
+          setUploadProgress(null);
+        }, 2000);
       } catch (error) {
         const isPasswordError =
           passwordCancelledRef.current ||
@@ -350,6 +376,7 @@ function TrimEditor(): ReactElement {
         passwordCancelledRef.current = false;
       } finally {
         setLoadingMessage("");
+        setUploadProgress(null);
         event.target.value = "";
       }
     },
@@ -1008,6 +1035,27 @@ function TrimEditor(): ReactElement {
           {loadingMessage && (
             <p className="text-sm text-indigo-600">{loadingMessage}</p>
           )}
+          
+          {uploadProgress && (
+            <div className="rounded-2xl border border-indigo-400 bg-indigo-50 px-4 py-3">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-indigo-900">
+                  PDFアップロード中
+                </h3>
+                <span className="text-sm font-medium text-indigo-800">
+                  {uploadProgress.progress}%
+                </span>
+              </div>
+              <div className="w-full bg-indigo-200 rounded-full h-2 mb-2">
+                <div 
+                  className="bg-indigo-500 h-2 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${uploadProgress.progress}%` }}
+                />
+              </div>
+              <p className="text-sm text-indigo-800">{uploadProgress.message}</p>
+            </div>
+          )}
+          
           {practiceData && (
             <button
               type="button"

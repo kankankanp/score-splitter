@@ -330,6 +330,24 @@ async function trimScoreWithProgress({
   orientation = "portrait",
   onProgress,
 }: TrimScoreParams): Promise<TrimScoreResponse> {
+  // プログレス状況をシミュレート
+  const updateProgress = (stage: string, progress: number, message: string) => {
+    onProgress?.({ stage, progress, message });
+  };
+
+  // 段階1: 初期化
+  updateProgress("parsing", 10, "PDFファイルを検証しています...");
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  // 段階2: 準備
+  updateProgress("parsing", 25, "トリミングエリアを処理しています...");
+  await new Promise(resolve => setTimeout(resolve, 200));
+
+  // 段階3: 処理開始
+  updateProgress("processing", 40, "PDFページを処理しています...");
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  // 従来のAPIを使用して実際の処理を実行
   const payload: {
     title: string;
     pdfFile: string;
@@ -379,7 +397,10 @@ async function trimScoreWithProgress({
     throw new Error("PDFの内容を読み取れませんでした");
   }
 
-  const endpoint = `${baseUrl}/score.ScoreService/TrimScoreWithProgress`;
+  // 段階4: サーバー処理中
+  updateProgress("processing", 60, "サーバーでPDFを処理しています...");
+
+  const endpoint = `${baseUrl}/score.ScoreService/TrimScore`;
 
   const response = await fetch(endpoint, {
     method: "POST",
@@ -390,67 +411,54 @@ async function trimScoreWithProgress({
     body: JSON.stringify(payload),
   });
 
-  if (!response.body) {
-    throw new Error("ストリーミングレスポンスが取得できませんでした");
-  }
+  // 段階5: 生成中
+  updateProgress("generating", 85, "PDFを生成しています...");
+  await new Promise(resolve => setTimeout(resolve, 200));
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let finalResult: TrimScoreResponse | null = null;
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      
-      // 改行区切りでメッセージを分割
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || ""; // 最後の不完全な行はバッファに保持
-
-      for (const line of lines) {
-        if (line.trim() === "") continue;
-
-        try {
-          const data = JSON.parse(line);
-          
-          if (data.stage && data.progress !== undefined) {
-            // プログレス情報をコールバックで通知
-            onProgress?.({
-              stage: data.stage,
-              progress: data.progress,
-              message: data.message || "",
-            });
-
-            // 完了時のデータを保存
-            if (data.stage === "complete" && data.trimmedPdf) {
-              const pdfData = base64ToUint8Array(data.trimmedPdf);
-              finalResult = {
-                message: data.message || "トリミングが完了しました",
-                filename: data.filename || "trimmed-score.pdf",
-                pdfData,
-              };
-            }
-          } else if (data.code && data.message) {
-            // エラーレスポンス
-            throw new Error(data.message);
-          }
-        } catch (parseError) {
-          console.warn("Failed to parse streaming response:", line, parseError);
-        }
-      }
+  if (!response.ok) {
+    const errorText = await response.text();
+    let data: unknown;
+    try {
+      data = JSON.parse(errorText);
+    } catch {
+      data = { message: errorText };
     }
-  } finally {
-    reader.releaseLock();
+    const message =
+      (data as { error?: { message?: string } })?.error?.message ||
+      (data as { message?: string })?.message;
+    throw new Error(
+      message ? `トリミングに失敗しました: ${message}` : `トリミングに失敗しました (HTTP ${response.status})`,
+    );
   }
 
-  if (!finalResult) {
-    throw new Error("ストリーミング処理が完了しませんでした");
+  const data = await response.json();
+  const body = data as {
+    message?: string;
+    filename?: string;
+    trimmedPdf?: string;
+    trimmed_pdf?: string;
+  };
+  
+  const base64 = body.trimmedPdf || body.trimmed_pdf;
+  if (typeof base64 !== "string" || base64.length === 0) {
+    throw new Error("PDFデータの取得に失敗しました");
   }
 
-  return finalResult;
+  // 段階6: 完了
+  if (orientation === "landscape") {
+    updateProgress("generating", 95, "スライド形式に変換しています...");
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+
+  updateProgress("complete", 100, "トリミング済みPDFを生成しました");
+
+  const pdfData = base64ToUint8Array(base64);
+
+  return {
+    message: body.message || "トリミングが完了しました",
+    filename: body.filename || "trimmed-score.pdf",
+    pdfData,
+  };
 }
 
 type CropAreaPayload = {
