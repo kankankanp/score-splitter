@@ -27,7 +27,10 @@ console.log("API Configuration:", {
   UPLOAD_ENDPOINT,
   TRIM_ENDPOINT,
   env: import.meta.env.MODE,
+  isDev: import.meta.env.DEV,
+  isProd: import.meta.env.PROD,
   viteApiBaseUrl: import.meta.env.VITE_API_BASE_URL,
+  usingProxy: baseUrl === "",
 });
 
 export type UploadScoreParams = {
