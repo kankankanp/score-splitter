@@ -1,22 +1,22 @@
 import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
-  type ReactElement,
-} from "react";
-import { useNavigate } from "react-router-dom";
-import {
   GlobalWorkerOptions,
   PasswordResponses,
   getDocument,
   type PDFDocumentProxy,
 } from "pdfjs-dist";
 import workerSrc from "pdfjs-dist/build/pdf.worker?url";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactElement,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import { useNavigate } from "react-router-dom";
 import { trimScore } from "./api/scoreClient";
 import { usePractice } from "./practiceContext";
 
@@ -959,21 +959,41 @@ function TrimEditor(): ReactElement {
             <span className="font-semibold text-slate-900">
               PDFファイルを選択
             </span>
-            <input
-              type="file"
-              accept="application/pdf"
-              onChange={handleFileChange}
-              className="w-full cursor-pointer rounded-xl border border-dashed border-slate-400 bg-slate-50 px-4 py-3 text-base text-slate-900 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-500 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:border-indigo-500"
-            />
+            <div className="relative">
+              <input
+                type="file"
+                accept="application/pdf"
+                onChange={handleFileChange}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              />
+              <div className={`w-full rounded-xl border border-dashed px-4 py-3 text-base transition-colors ${
+                pdfName 
+                  ? "border-emerald-400 bg-emerald-50" 
+                  : "border-slate-400 bg-slate-50 hover:border-indigo-500"
+              }`}>
+                <div className="flex items-center gap-4">
+                  <span className={`inline-flex rounded-lg px-4 py-2 text-sm font-medium ${
+                    pdfName 
+                      ? "bg-emerald-500 text-white" 
+                      : "bg-indigo-500 text-white"
+                  }`}>
+                    {pdfName ? "ファイル選択済み" : "ファイルを選択"}
+                  </span>
+                  <span className={`${
+                    pdfName 
+                      ? "text-emerald-800 font-medium" 
+                      : "text-slate-600"
+                  }`}>
+                    {pdfName 
+                      ? `選択されました: ${pdfName}` 
+                      : "PDFファイルをドラッグ&ドロップまたはクリックして選択"}
+                  </span>
+                </div>
+              </div>
+            </div>
           </label>
           {loadingMessage && (
             <p className="text-sm text-indigo-600">{loadingMessage}</p>
-          )}
-          {pdfName && (
-            <p className="text-sm text-slate-600">
-              選択中:{" "}
-              <span className="font-medium text-slate-800">{pdfName}</span>
-            </p>
           )}
           {practiceData && (
             <button
