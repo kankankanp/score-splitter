@@ -189,6 +189,13 @@ function TrimEditor(): ReactElement {
     setUploadProgress(null);
   }, [setPracticeData]);
 
+  // TrimEditorページ読み込み時にpracticeDataをクリア
+  useEffect(() => {
+    if (practiceData) {
+      setPracticeData(null);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!passwordPromptOpen) {
       return undefined;

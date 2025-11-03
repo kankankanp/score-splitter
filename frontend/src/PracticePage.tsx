@@ -329,7 +329,7 @@ function PracticeWorkspace({
 }
 
 function PracticePage(): ReactElement {
-  const { practiceData } = usePractice();
+  const { practiceData, setPracticeData } = usePractice();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -344,7 +344,10 @@ function PracticePage(): ReactElement {
         <p>練習用のデータが見つかりませんでした。</p>
         <button
           type="button"
-          onClick={() => navigate("/")}
+          onClick={() => {
+            setPracticeData(null); // 念のためクリア
+            navigate("/");
+          }}
           className="rounded-full border border-slate-400 px-4 py-2 text-sm text-slate-800 transition hover:border-emerald-500 hover:text-emerald-700"
         >
           トリミング画面へ戻る
@@ -359,6 +362,7 @@ function PracticePage(): ReactElement {
       filename={practiceData.filename}
       pdfData={practiceData.pdfData}
       onExit={() => {
+        setPracticeData(null); // 練習データをクリア
         navigate("/");
       }}
     />
