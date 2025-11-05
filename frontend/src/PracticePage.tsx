@@ -9,7 +9,9 @@ import {
   type ReactElement,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { usePractice } from "./practiceContext";
+import { useLanguage } from "./hooks/useLanguage";
 
 type PracticePageImage = {
   pageNumber: number;
@@ -47,6 +49,7 @@ function PracticeWorkspace({
   pdfData: Uint8Array;
   onExit: () => void;
 }): ReactElement {
+  const { t } = useTranslation();
   const [pages, setPages] = useState<PracticePageImage[]>([]);
   const [loadingPages, setLoadingPages] = useState<boolean>(true);
   const [renderError, setRenderError] = useState<string>("");
@@ -223,7 +226,7 @@ function PracticeWorkspace({
     >
       <header className="flex items-center justify-between border-b border-slate-200 bg-white/80 px-6 py-4 backdrop-blur">
         <div>
-          <h1 className="text-2xl font-semibold">練習モード</h1>
+          <h1 className="text-2xl font-semibold">{t('practice.title')}</h1>
           <p className="text-xs text-slate-600">
             {title} / {filename}
           </p>
@@ -236,7 +239,7 @@ function PracticeWorkspace({
           }}
           className="rounded-full border border-slate-400 px-4 py-2 text-sm font-medium text-slate-800 transition hover:border-emerald-500 hover:text-emerald-700"
         >
-          トリミングへ戻る
+          {t('buttons.backToTrimming')}
         </button>
       </header>
 
@@ -248,7 +251,7 @@ function PracticeWorkspace({
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3 text-sm text-slate-800">
               <label className="flex items-center gap-2">
-                <span className="text-xs text-slate-600">BPM</span>
+                <span className="text-xs text-slate-600">{t('practice.bpmLabel')}</span>
                 <input
                   type="number"
                   value={bpm}
@@ -259,8 +262,7 @@ function PracticeWorkspace({
                 />
               </label>
               <span className="text-xs text-slate-500">
-                ピクセル速度: 約
-                {Math.round((bpm / 60) * SCROLL_PIXELS_PER_BEAT)}px/s
+                {t('practice.pixelSpeed', { speed: Math.round((bpm / 60) * SCROLL_PIXELS_PER_BEAT) })}
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -270,7 +272,7 @@ function PracticeWorkspace({
                 className="rounded-full bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow shadow-emerald-900/40 transition hover:bg-emerald-400 disabled:opacity-60"
                 disabled={isScrolling || pages.length === 0 || loadingPages}
               >
-                再生
+                {t('buttons.start')}
               </button>
               <button
                 type="button"
@@ -278,14 +280,14 @@ function PracticeWorkspace({
                 className="rounded-full border border-slate-400 px-4 py-2 text-sm font-medium text-slate-800 transition hover:border-slate-600 hover:text-slate-900 disabled:opacity-60"
                 disabled={!isScrolling}
               >
-                一時停止
+                {t('buttons.pause')}
               </button>
               <button
                 type="button"
                 onClick={handleResetScroll}
                 className="rounded-full border border-slate-400 px-4 py-2 text-sm font-medium text-slate-800 transition hover:border-slate-600 hover:text-slate-900"
               >
-                先頭に戻る
+                {t('buttons.reset')}
               </button>
             </div>
           </div>
@@ -302,11 +304,11 @@ function PracticeWorkspace({
           >
             {loadingPages ? (
               <div className="flex h-full items-center justify-center text-sm text-slate-600">
-                楽譜を読み込んでいます…
+                {t('practice.loadingScore')}
               </div>
             ) : pages.length === 0 ? (
               <div className="flex h-full items-center justify-center text-sm text-slate-600">
-                表示できる楽譜がありません
+                {t('practice.noScore')}
               </div>
             ) : (
               <div className="flex h-full items-center gap-6 px-10">
@@ -314,7 +316,7 @@ function PracticeWorkspace({
                   <img
                     key={`practice-${page.pageNumber}`}
                     src={page.dataUrl}
-                    alt={`楽譜 ${page.pageNumber}`}
+                    alt={t('practice.scoreAlt', { pageNumber: page.pageNumber })}
                     className="h-full max-h-[70vh] w-auto flex-shrink-0 rounded-xl border border-slate-300 bg-white object-contain"
                     draggable={false}
                   />
@@ -329,28 +331,30 @@ function PracticeWorkspace({
 }
 
 function PracticePage(): ReactElement {
+  const { t } = useTranslation();
+  const { navigateWithLanguage } = useLanguage();
   const { practiceData, setPracticeData } = usePractice();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!practiceData) {
-      navigate("/", { replace: true });
+      navigateWithLanguage("/");
     }
-  }, [practiceData, navigate]);
+  }, [practiceData, navigateWithLanguage]);
 
   if (!practiceData) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 text-slate-700">
-        <p>練習用のデータが見つかりませんでした。</p>
+        <p>{t('practice.noDataFound')}</p>
         <button
           type="button"
           onClick={() => {
             setPracticeData(null); // 念のためクリア
-            navigate("/");
+            navigateWithLanguage("/");
           }}
           className="rounded-full border border-slate-400 px-4 py-2 text-sm text-slate-800 transition hover:border-emerald-500 hover:text-emerald-700"
         >
-          トリミング画面へ戻る
+          {t('practice.backToTrimming')}
         </button>
       </div>
     );
@@ -363,7 +367,7 @@ function PracticePage(): ReactElement {
       pdfData={practiceData.pdfData}
       onExit={() => {
         setPracticeData(null); // 練習データをクリア
-        navigate("/");
+        navigateWithLanguage("/");
       }}
     />
   );

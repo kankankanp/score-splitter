@@ -1,0 +1,63 @@
+{
+  "title": "楽譜PDFトリミング",
+  "description": "PDFを読み込んで全ページプレビューし、共通のトリミング範囲を指定したうえで新しいPDFとして書き出します。",
+  "fileUpload": {
+    "title": "PDFファイルを選択",
+    "selectFile": "ファイルを選択",
+    "fileSelected": "ファイル選択済み",
+    "selectedFile": "選択されました: {{filename}}",
+    "placeholder": "PDFファイルをドラッグ&ドロップまたはクリックして選択",
+    "uploading": "PDFアップロード中"
+  },
+  "buttons": {
+    "openPracticeMode": "練習モードを開く",
+    "addArea": "エリア追加",
+    "backToCommon": "共通設定に戻す",
+    "makePageSpecific": "このページ専用にする",
+    "cancel": "キャンセル",
+    "submit": "送信",
+    "start": "再生",
+    "pause": "一時停止",
+    "reset": "先頭に戻る",
+    "backToTrimming": "トリミングへ戻る"
+  },
+  "trimming": {
+    "previewTitle": "トリミングプレビュー",
+    "instructions": "プレビュー内をドラッグしてエリアを追加できます。エリア枠をドラッグして移動・リサイズしてください。",
+    "pageSpecificEditing": "ページ{{pageNumber}}専用の設定を編集中",
+    "commonEditing": "共通設定を編集中",
+    "allPagesExcluded": "すべてのページが除外されています",
+    "excludedPages": "除外したページ:",
+    "restorePage": "ページ {{pageNumber}} を戻す",
+    "excludePage": "ページ{{pageNumber}}を除外",
+    "deleteAreaLabel": "このエリアを削除",
+    "pageLabel": "ページ {{pageNumber}}",
+    "thumbnailAlt": "サムネイル {{pageNumber}}",
+    "renderingPage": "ページを描画しています…",
+    "selectPage": "ページを選択してください"
+  },
+  "practice": {
+    "title": "練習モード",
+    "bpmLabel": "BPM",
+    "pixelSpeed": "ピクセル速度: 約{{speed}}px/s",
+    "loadingScore": "楽譜を読み込んでいます…",
+    "noScore": "表示できる楽譜がありません",
+    "scoreAlt": "楽譜 {{pageNumber}}",
+    "noDataFound": "練習用のデータが見つかりませんでした。",
+    "backToTrimming": "トリミング画面へ戻る"
+  },
+  "password": {
+    "title": "PDFパスワード",
+    "placeholder": "パスワード"
+  },
+  "progress": {
+    "parsing": "解析中",
+    "processing": "処理中",
+    "generating": "生成中",
+    "complete": "完了"
+  },
+  "errors": {
+    "needAtLeastOnePage": "トリミング対象は少なくとも1ページ必要です",
+    "selectPageToTrim": "トリミング対象のページを選択してください"
+  }
+}

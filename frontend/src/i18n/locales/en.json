@@ -1,0 +1,63 @@
+{
+  "title": "Score PDF Trimming",
+  "description": "Load a PDF, preview all pages, specify common trimming areas, and export as a new PDF.",
+  "fileUpload": {
+    "title": "Select PDF File",
+    "selectFile": "Select File",
+    "fileSelected": "File Selected",
+    "selectedFile": "Selected: {{filename}}",
+    "placeholder": "Drag & drop a PDF file here or click to select",
+    "uploading": "Uploading PDF"
+  },
+  "buttons": {
+    "openPracticeMode": "Open Practice Mode",
+    "addArea": "Add Area",
+    "backToCommon": "Back to Common Settings",
+    "makePageSpecific": "Make Page-Specific",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "start": "Start",
+    "pause": "Pause",
+    "reset": "Reset to Beginning",
+    "backToTrimming": "Back to Trimming"
+  },
+  "trimming": {
+    "previewTitle": "Trimming Preview",
+    "instructions": "Drag within the preview to add areas. Drag area borders to move and resize.",
+    "pageSpecificEditing": "Editing page {{pageNumber}} specific settings",
+    "commonEditing": "Editing common settings",
+    "allPagesExcluded": "All pages have been excluded",
+    "excludedPages": "Excluded pages:",
+    "restorePage": "Restore page {{pageNumber}}",
+    "excludePage": "Exclude page {{pageNumber}}",
+    "deleteAreaLabel": "Delete this area",
+    "pageLabel": "Page {{pageNumber}}",
+    "thumbnailAlt": "Thumbnail {{pageNumber}}",
+    "renderingPage": "Rendering page...",
+    "selectPage": "Please select a page"
+  },
+  "practice": {
+    "title": "Practice Mode",
+    "bpmLabel": "BPM",
+    "pixelSpeed": "Pixel speed: approx {{speed}}px/s",
+    "loadingScore": "Loading score...",
+    "noScore": "No score to display",
+    "scoreAlt": "Score {{pageNumber}}",
+    "noDataFound": "Practice data not found.",
+    "backToTrimming": "Back to Trimming Screen"
+  },
+  "password": {
+    "title": "PDF Password",
+    "placeholder": "Password"
+  },
+  "progress": {
+    "parsing": "Parsing",
+    "processing": "Processing", 
+    "generating": "Generating",
+    "complete": "Complete"
+  },
+  "errors": {
+    "needAtLeastOnePage": "At least one page is required for trimming",
+    "selectPageToTrim": "Please select a page to trim"
+  }
+}
