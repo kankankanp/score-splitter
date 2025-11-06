@@ -194,7 +194,7 @@ function TrimEditor(): ReactElement {
     setUploadProgress(null);
   }, [setPracticeData]);
 
-  // TrimEditorページ読み込み時にpracticeDataをクリア
+  // Clear practiceData when TrimEditor page loads
   useEffect(() => {
     if (practiceData) {
       setPracticeData(null);
@@ -220,7 +220,7 @@ function TrimEditor(): ReactElement {
       setPasswordPromptMessage(message);
       setPasswordValue("");
       setPasswordPromptOpen(true);
-      setLoadingMessage("パスワードの入力を待機しています…");
+      setLoadingMessage(t('password.waiting'));
     });
   }, []);
 
@@ -235,7 +235,7 @@ function TrimEditor(): ReactElement {
     passwordResolverRef.current = null;
     setPasswordPromptOpen(false);
     setPasswordValue("");
-    setLoadingMessage("PDFを読み込んでいます…");
+    setLoadingMessage(t('progress.loadingPdf'));
   }, [passwordValue]);
 
   const handlePasswordCancel = useCallback(() => {
@@ -280,23 +280,23 @@ function TrimEditor(): ReactElement {
 
       resetState();
       setPdfName(file.name);
-      setLoadingMessage("PDFを読み込んでいます…");
+      setLoadingMessage(t('progress.loadingPdf'));
       
-      // アップロード進捗をシミュレート
-      setUploadProgress({ progress: 10, message: "ファイルを読み込んでいます..." });
+      // Simulate upload progress
+      setUploadProgress({ progress: 10, message: t('progress.loadingFile') });
       await new Promise(resolve => setTimeout(resolve, 100));
 
       passwordCancelledRef.current = false;
 
       try {
-        setUploadProgress({ progress: 30, message: "PDFファイルを解析中..." });
+        setUploadProgress({ progress: 30, message: t('progress.parsingPdf') });
         const arrayBuffer = await file.arrayBuffer();
         const bytes = new Uint8Array(arrayBuffer);
         const storedBytes = new Uint8Array(bytes);
         setPdfBytes(storedBytes);
         setExcludedPageNumbers([]);
 
-        setUploadProgress({ progress: 50, message: "PDFを読み込んでいます..." });
+        setUploadProgress({ progress: 50, message: t('progress.loadingPdf') });
         const loadingTask = getDocument({ data: bytes });
         loadingTask.onPassword = (
           updatePassword: (arg0: string) => void,
@@ -304,8 +304,8 @@ function TrimEditor(): ReactElement {
         ) => {
           const message =
             reason === PasswordResponses.NEED_PASSWORD
-              ? "このPDFはパスワードで保護されています。パスワードを入力してください。"
-              : "パスワードが違います。もう一度入力してください。";
+              ? t('password.protected')
+              : t('password.incorrect');
 
           void requestPassword(message).then((password) => {
             if (typeof password === "string") {
@@ -318,21 +318,21 @@ function TrimEditor(): ReactElement {
             passwordCancelledRef.current = true;
             resetState();
             setLoadingMessage("");
-            setErrorMessage("パスワード入力をキャンセルしました");
+            setErrorMessage(t('password.cancelled'));
           });
         };
-        setUploadProgress({ progress: 70, message: "ページプレビューを生成中..." });
+        setUploadProgress({ progress: 70, message: t('progress.generatingPreviews') });
         const doc = await loadingTask.promise;
         pdfDocumentRef.current = doc;
 
         const previews: PdfPagePreview[] = [];
 
         for (let index = 1; index <= doc.numPages; index += 1) {
-          // プレビュー生成の進捗更新
+          // Update preview generation progress
           const previewProgress = 70 + Math.floor((index / doc.numPages) * 25);
           setUploadProgress({ 
             progress: previewProgress, 
-            message: `ページ ${index}/${doc.numPages} のプレビューを生成中...` 
+            message: t('progress.pageProgress', { current: index, total: doc.numPages }) 
           });
           
           const page = await doc.getPage(index);
@@ -369,9 +369,9 @@ function TrimEditor(): ReactElement {
         setStatusMessage("");
         setErrorMessage("");
         
-        setUploadProgress({ progress: 100, message: "PDFの読み込みが完了しました" });
+        setUploadProgress({ progress: 100, message: t('progress.loadComplete') });
         
-        // 成功メッセージを2秒後に自動的に消す
+        // Auto-clear success message after 2 seconds
         setTimeout(() => {
           setUploadProgress(null);
         }, 2000);
@@ -382,7 +382,7 @@ function TrimEditor(): ReactElement {
 
         if (!isPasswordError) {
           console.error(error);
-          setErrorMessage("PDFの読み込みに失敗しました");
+          setErrorMessage(t('errors.pdfLoadFailed'));
           resetState();
         }
         passwordCancelledRef.current = false;
@@ -434,7 +434,7 @@ function TrimEditor(): ReactElement {
       } catch (error) {
         console.error(error);
         if (!cancelled) {
-          setErrorMessage("ページの描画に失敗しました");
+          setErrorMessage(t('errors.pageRenderFailed'));
         }
       } finally {
         if (!cancelled) {
@@ -864,7 +864,7 @@ function TrimEditor(): ReactElement {
       (areas) => areas.length > 0
     );
     if (!pdfBytes || (!hasDefaultAreas && !hasPageOverrides)) {
-      setErrorMessage("トリミングエリアを設定してください");
+      setErrorMessage(t('errors.setTrimArea'));
       return;
     }
 
@@ -884,7 +884,7 @@ function TrimEditor(): ReactElement {
       pagesRequiringDefault.length > 0 &&
       defaultAreasForPayload.length === 0
     ) {
-      setErrorMessage("共通のトリミングエリアを設定してください");
+      setErrorMessage(t('errors.setCommonTrimArea'));
       return;
     }
 
@@ -892,7 +892,7 @@ function TrimEditor(): ReactElement {
       const pageNumber = Number(pageKey);
       if (includePageSet.has(pageNumber) && areas.length === 0) {
         setErrorMessage(
-          `ページ${pageNumber}のトリミングエリアを設定してください`
+          t('errors.setPageTrimArea', { pageNumber })
         );
         return;
       }
@@ -960,7 +960,7 @@ function TrimEditor(): ReactElement {
       link.download = response.filename || `${baseTitle}-trimmed.pdf`;
       link.click();
       setStatusMessage(
-        response.message || "トリミング済みPDFをダウンロードしました"
+        response.message || t('progress.downloadComplete')
       );
       setErrorMessage("");
       setTimeout(() => {
@@ -969,9 +969,9 @@ function TrimEditor(): ReactElement {
     } catch (error) {
       console.error(error);
       if (error instanceof Error) {
-        setErrorMessage(error.message || "PDFの生成に失敗しました");
+        setErrorMessage(error.message || t('errors.pdfGenerationFailed'));
       } else {
-        setErrorMessage("PDFの生成に失敗しました");
+        setErrorMessage(t('errors.pdfGenerationFailed'));
       }
     } finally {
       setGenerating(false);
@@ -1268,7 +1268,7 @@ function TrimEditor(): ReactElement {
 
           <aside className="flex flex-col gap-4">
             <h2 className="text-lg font-semibold text-slate-900">
-              トリミングエリア
+              {t('trimming.areasTitle')}
             </h2>
             <ul className="space-y-3">
               {sortedAreas.map((area, index) => (
@@ -1285,12 +1285,14 @@ function TrimEditor(): ReactElement {
                     className="text-left"
                     onClick={() => setActiveAreaId(area.id)}
                   >
-                    <div className="font-semibold">エリア{index + 1}</div>
+                    <div className="font-semibold">{t('trimming.areaLabel', { number: index + 1 })}</div>
                     <div className="text-xs opacity-80">
-                      上 {Math.round(area.top * 100)}% / 左{" "}
-                      {Math.round(area.left * 100)}% / 幅{" "}
-                      {Math.round(area.width * 100)}% / 高さ{" "}
-                      {Math.round(area.height * 100)}%
+                      {t('trimming.areaCoordinates', {
+                        top: Math.round(area.top * 100),
+                        left: Math.round(area.left * 100),
+                        width: Math.round(area.width * 100),
+                        height: Math.round(area.height * 100)
+                      })}
                     </div>
                   </button>
                   <button
@@ -1309,7 +1311,7 @@ function TrimEditor(): ReactElement {
               className="rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white shadow shadow-emerald-900/40 transition hover:bg-emerald-400 disabled:opacity-60"
               disabled={!canExport}
             >
-              トリミングしてダウンロード
+              {t('buttons.trimAndDownload')}
             </button>
           </aside>
         </section>
@@ -1318,7 +1320,7 @@ function TrimEditor(): ReactElement {
       {pdfPages.length > 0 && (
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-slate-900">
-            ページプレビュー
+            {t('trimming.pagePreviewTitle')}
           </h2>
           <div className="flex gap-3 overflow-x-auto pb-2">
             {availablePages.map((page) => {

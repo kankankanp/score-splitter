@@ -19,7 +19,8 @@
     "start": "再生",
     "pause": "一時停止",
     "reset": "先頭に戻る",
-    "backToTrimming": "トリミングへ戻る"
+    "backToTrimming": "トリミングへ戻る",
+    "trimAndDownload": "トリミングしてダウンロード"
   },
   "trimming": {
     "previewTitle": "トリミングプレビュー",
@@ -34,7 +35,11 @@
     "pageLabel": "ページ {{pageNumber}}",
     "thumbnailAlt": "サムネイル {{pageNumber}}",
     "renderingPage": "ページを描画しています…",
-    "selectPage": "ページを選択してください"
+    "selectPage": "ページを選択してください",
+    "areasTitle": "トリミングエリア",
+    "areaLabel": "エリア{{number}}",
+    "areaCoordinates": "上 {{top}}% / 左 {{left}}% / 幅 {{width}}% / 高さ {{height}}%",
+    "pagePreviewTitle": "ページプレビュー"
   },
   "practice": {
     "title": "練習モード",
@@ -48,16 +53,42 @@
   },
   "password": {
     "title": "PDFパスワード",
-    "placeholder": "パスワード"
+    "placeholder": "パスワード",
+    "waiting": "パスワードの入力を待機しています…",
+    "protected": "このPDFはパスワードで保護されています。パスワードを入力してください。",
+    "incorrect": "パスワードが違います。もう一度入力してください。",
+    "cancelled": "パスワード入力をキャンセルしました"
   },
   "progress": {
     "parsing": "解析中",
     "processing": "処理中",
     "generating": "生成中",
-    "complete": "完了"
+    "complete": "完了",
+    "parsingPdf": "PDFファイルを解析中...",
+    "generatingPreviews": "ページプレビューを生成中...",
+    "pageProgress": "ページ {{current}}/{{total}} のプレビューを生成中...",
+    "loadComplete": "PDFの読み込みが完了しました",
+    "processingAreas": "トリミングエリアを処理しています...",
+    "processingPages": "PDFページを処理しています...",
+    "serverProcessing": "サーバーでPDFを処理しています...",
+    "generatingPdf": "PDFを生成しています...",
+    "trimComplete": "トリミング済みPDFを生成しました",
+    "downloadComplete": "トリミング済みPDFをダウンロードしました",
+    "loadingPdf": "PDFを読み込んでいます…",
+    "loadingFile": "ファイルを読み込んでいます..."
   },
   "errors": {
     "needAtLeastOnePage": "トリミング対象は少なくとも1ページ必要です",
-    "selectPageToTrim": "トリミング対象のページを選択してください"
+    "selectPageToTrim": "トリミング対象のページを選択してください",
+    "pageRenderFailed": "ページの描画に失敗しました",
+    "setTrimArea": "トリミングエリアを設定してください",
+    "setCommonTrimArea": "共通のトリミングエリアを設定してください",
+    "setPageTrimArea": "ページ{{pageNumber}}のトリミングエリアを設定してください",
+    "pdfGenerationFailed": "PDFの生成に失敗しました",
+    "scoreLoadFailed": "楽譜の読み込みに失敗しました",
+    "trimFailed": "トリミングに失敗しました",
+    "noTrimAreas": "トリミングエリアを指定してください",
+    "noPdfGenerated": "生成されたPDFを取得できませんでした",
+    "pdfLoadFailed": "PDFの読み込みに失敗しました"
   }
 }

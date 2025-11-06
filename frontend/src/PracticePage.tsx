@@ -108,7 +108,7 @@ function PracticeWorkspace({
         console.error(error);
         if (!cancelled) {
           setPages([]);
-          setRenderError("楽譜の読み込みに失敗しました");
+          setRenderError(t('errors.scoreLoadFailed'));
         }
       } finally {
         if (!cancelled) {
@@ -349,7 +349,7 @@ function PracticePage(): ReactElement {
         <button
           type="button"
           onClick={() => {
-            setPracticeData(null); // 念のためクリア
+            setPracticeData(null); // Clear just in case
             navigateWithLanguage("/");
           }}
           className="rounded-full border border-slate-400 px-4 py-2 text-sm text-slate-800 transition hover:border-emerald-500 hover:text-emerald-700"
@@ -366,7 +366,7 @@ function PracticePage(): ReactElement {
       filename={practiceData.filename}
       pdfData={practiceData.pdfData}
       onExit={() => {
-        setPracticeData(null); // 練習データをクリア
+        setPracticeData(null); // Clear practice data
         navigateWithLanguage("/");
       }}
     />

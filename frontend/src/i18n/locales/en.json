@@ -19,7 +19,8 @@
     "start": "Start",
     "pause": "Pause",
     "reset": "Reset to Beginning",
-    "backToTrimming": "Back to Trimming"
+    "backToTrimming": "Back to Trimming",
+    "trimAndDownload": "Trim and Download"
   },
   "trimming": {
     "previewTitle": "Trimming Preview",
@@ -34,7 +35,11 @@
     "pageLabel": "Page {{pageNumber}}",
     "thumbnailAlt": "Thumbnail {{pageNumber}}",
     "renderingPage": "Rendering page...",
-    "selectPage": "Please select a page"
+    "selectPage": "Please select a page",
+    "areasTitle": "Trimming Areas",
+    "areaLabel": "Area {{number}}",
+    "areaCoordinates": "Top {{top}}% / Left {{left}}% / Width {{width}}% / Height {{height}}%",
+    "pagePreviewTitle": "Page Preview"
   },
   "practice": {
     "title": "Practice Mode",
@@ -48,16 +53,42 @@
   },
   "password": {
     "title": "PDF Password",
-    "placeholder": "Password"
+    "placeholder": "Password",
+    "waiting": "Waiting for password input...",
+    "protected": "This PDF is password protected. Please enter the password.",
+    "incorrect": "Incorrect password. Please try again.",
+    "cancelled": "Password input was cancelled"
   },
   "progress": {
     "parsing": "Parsing",
     "processing": "Processing", 
     "generating": "Generating",
-    "complete": "Complete"
+    "complete": "Complete",
+    "parsingPdf": "Parsing PDF file...",
+    "generatingPreviews": "Generating page previews...",
+    "pageProgress": "Generating preview for page {{current}}/{{total}}...",
+    "loadComplete": "PDF loading completed",
+    "processingAreas": "Processing trimming areas...",
+    "processingPages": "Processing PDF pages...",
+    "serverProcessing": "Server is processing PDF...",
+    "generatingPdf": "Generating PDF...",
+    "trimComplete": "Generated trimmed PDF",
+    "downloadComplete": "Downloaded trimmed PDF",
+    "loadingPdf": "Loading PDF...",
+    "loadingFile": "Loading file..."
   },
   "errors": {
     "needAtLeastOnePage": "At least one page is required for trimming",
-    "selectPageToTrim": "Please select a page to trim"
+    "selectPageToTrim": "Please select a page to trim",
+    "pageRenderFailed": "Failed to render page",
+    "setTrimArea": "Please set trimming areas",
+    "setCommonTrimArea": "Please set common trimming areas", 
+    "setPageTrimArea": "Please set trimming areas for page {{pageNumber}}",
+    "pdfGenerationFailed": "PDF generation failed",
+    "scoreLoadFailed": "Failed to load score",
+    "trimFailed": "Trimming failed",
+    "noTrimAreas": "Please specify trimming areas",
+    "noPdfGenerated": "Could not retrieve generated PDF",
+    "pdfLoadFailed": "Failed to load PDF"
   }
 }
