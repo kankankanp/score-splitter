@@ -64,6 +64,7 @@ export type TrimScoreParams = {
   pageSettings?: PageTrimSetting[];
   orientation?: "portrait" | "landscape";
   onProgress?: (progress: TrimScoreProgress) => void;
+  language?: string;
 };
 
 export type TrimScoreProgress = {
@@ -171,6 +172,7 @@ export async function trimScore({
   pageSettings,
   orientation = "portrait",
   onProgress,
+  language = "en",
 }: TrimScoreParams): Promise<TrimScoreResponse> {
   if (areas.length === 0 && (!pageSettings || pageSettings.length === 0)) {
     throw new Error("Please specify trimming areas");
@@ -187,6 +189,7 @@ export async function trimScore({
       pageSettings,
       orientation,
       onProgress,
+      language,
     });
   }
 
@@ -262,7 +265,10 @@ export async function trimScore({
 
   const response = await fetch(TRIM_ENDPOINT, {
     method: "POST",
-    headers: CONNECT_HEADERS,
+    headers: {
+      ...CONNECT_HEADERS,
+      "X-Language": language,
+    },
     body: JSON.stringify(payload),
   });
 
@@ -329,6 +335,7 @@ async function trimScoreWithProgress({
   pageSettings,
   orientation = "portrait",
   onProgress,
+  language = "en",
 }: TrimScoreParams): Promise<TrimScoreResponse> {
   // Simulate progress status
   const updateProgress = (stage: string, progress: number, message: string) => {
@@ -407,6 +414,7 @@ async function trimScoreWithProgress({
     headers: {
       "Content-Type": "application/json",
       "Connect-Protocol-Version": "1",
+      "X-Language": language,
     },
     body: JSON.stringify(payload),
   });

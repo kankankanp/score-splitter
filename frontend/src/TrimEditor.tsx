@@ -116,7 +116,7 @@ function cloneAreasWithNewIds(areas: CropArea[]): CropArea[] {
 
 function TrimEditor(): ReactElement {
   const { t } = useTranslation();
-  const { navigateWithLanguage } = useLanguage();
+  const { navigateWithLanguage, currentLanguage } = useLanguage();
   const navigate = useNavigate();
   const { practiceData, setPracticeData } = usePractice();
 
@@ -784,7 +784,7 @@ function TrimEditor(): ReactElement {
       return;
     }
     let createdAreas: CropArea[] | undefined;
-    setPageSpecificAreas((current) => {
+    setPageSpecificAreas((current: { [x: string]: CropArea[] | undefined; }) => {
       if (current[selectedPageNumber]) {
         createdAreas = current[selectedPageNumber];
         return current;
@@ -806,7 +806,7 @@ function TrimEditor(): ReactElement {
     if (selectedPageNumber === null) {
       return;
     }
-    setPageSpecificAreas((current) => {
+    setPageSpecificAreas((current: { [x: string]: any; }) => {
       if (!current[selectedPageNumber]) {
         return current;
       }
@@ -932,6 +932,7 @@ function TrimEditor(): ReactElement {
         includePages: includePageNumbers,
         pageSettings: pageSettingsPayload,
         orientation,
+        language: currentLanguage,
         onProgress: (progress) => {
           setTrimProgress(progress);
         },
