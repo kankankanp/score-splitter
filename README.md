@@ -1,252 +1,110 @@
 # Score Splitter
 
 <p align="center">
-  A powerful application for splitting musical scores and generating videos from PDF sheet music.
+  Transform your PDF sheet music into educational content with ease.
 </p>
 
 <p align="center">
-  <a href="#features">Features</a> |
-  <a href="#quick-start">Quick Start</a> |
-  <a href="#documentation">Documentation</a> |
-  <a href="#development">Development</a>
+  <a href="#what-is-score-splitter">About</a> |
+  <a href="#how-to-use">How to Use</a> |
+  <a href="#use-cases">Use Cases</a> |
+  <a href="#frequently-asked-questions">FAQ</a>
 </p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="Score Splitter is released under the MIT license." />
-  <img src="https://img.shields.io/badge/React-19.1.1-blue.svg" alt="React version" />
-  <img src="https://img.shields.io/badge/Go-1.25-00ADD8.svg" alt="Go version" />
-  <img src="https://img.shields.io/badge/TypeScript-5.8-blue.svg" alt="TypeScript version" />
-</p>
+## What is Score Splitter?
 
-<p align="center">
-  TypeScript-based frontend with React and Go-based backend. Open source tool for processing musical scores and generating educational content.
-</p>
+Score Splitter is a user-friendly application that helps musicians, music teachers, and students work with PDF sheet music more effectively. Upload your sheet music, and the application will intelligently process and split it into manageable sections, making it perfect for practice, teaching, or creating educational content.
 
 ## Features
 
-| PDF Score Processing | Video Generation | Modern Tech Stack |
+| 🎼 Smart Score Processing | 🎥 Video Generation | 📱 Easy to Use |
 | --- | --- | --- |
-| Split and process musical scores with precision using PDF processing capabilities. | Generate educational videos from sheet music with automated workflows. | Built with React 19, TypeScript, Go 1.25, and modern development tools. |
+| Automatically splits PDF sheet music into individual pages or sections with precision. | Generate practice videos and educational content directly from your sheet music. | Simple, intuitive interface that anyone can use without technical knowledge. |
 
-## Quick Start
+## How to Use
 
-### Prerequisites
+### 1. Upload Your Sheet Music
+- Click the upload button and select your PDF sheet music file
+- The application supports standard PDF files containing musical scores
 
-- **Node.js** (18+)
-- **Go** (1.25+)  
-- **Docker & Docker Compose**
+### 2. Processing
+- Score Splitter automatically analyzes your sheet music
+- The PDF is intelligently split into individual pages or sections
+- Preview the results before proceeding
 
-### Installation
+### 3. Generate Content
+- Choose your output format (split PDFs, videos, etc.)
+- Customize settings according to your needs
+- Download your processed files
 
-```bash
-# Clone the repository
-git clone [repository-url]
-cd score-splitter
+### 4. Use Your Content
+- Use split pages for individual practice sessions
+- Share videos with students or fellow musicians
+- Organize your music library more effectively
 
-# Check dependencies and install
-make setup
-```
+## Use Cases
 
-### Running the Application
+### For Music Teachers
+- Split lesson materials into individual pages
+- Create practice videos for students
+- Organize course materials efficiently
 
-```bash
-# Start both frontend and backend development servers
-make dev
-```
+### For Students
+- Break down complex pieces into manageable sections
+- Create personal practice materials
+- Study individual parts of compositions
 
-Access the application:
-- **Frontend**: http://localhost:5173
-- **Backend**: http://localhost:8085
-- **Health Check**: http://localhost:8085/health
+### For Musicians
+- Prepare performance materials
+- Share specific sections with ensemble members
+- Create digital music libraries
 
-## Available Commands
+## Supported File Formats
 
-### Basic Operations
-```bash
-make help          # Show all available commands
-make dev           # Start development environment
-make status        # Check service status
-make stop          # Stop all services
-```
+### Input
+- **PDF files** containing sheet music
+- Standard music notation PDFs
+- Scanned sheet music (as PDF)
 
-### Individual Services
-```bash
-make dev-frontend  # Start frontend only
-make dev-backend   # Start backend only (Docker)
-make docker-dev    # Start backend with Docker
-```
+### Output
+- Individual PDF pages
+- Video files for educational content
+- Organized file collections
 
-### Build & Test
-```bash
-make build         # Build entire project
-make test          # Run tests
-make lint          # Run code quality checks
-```
+## Tips for Best Results
 
-### Maintenance
-```bash
-make clean         # Clean build artifacts
-make reset         # Reset project state
-make update        # Update dependencies
-```
+1. **High-Quality PDFs**: Use clear, high-resolution PDF files for better processing results
+2. **Standard Notation**: Works best with traditional music notation
+3. **Clean Files**: Ensure your PDFs don't have excessive margins or annotations that might interfere with processing
 
-## Project Structure
+## Frequently Asked Questions
 
-```
-score-splitter/
-├── frontend/           # React + Vite frontend
-│   ├── src/
-│   ├── package.json
-│   └── vite.config.ts
-├── backend/            # Go backend
-│   ├── docker/         # Docker configuration
-│   ├── main.go
-│   └── go.mod
-├── Makefile           # Project management
-└── README.md
-```
+**Q: What types of music files can I upload?**  
+A: Currently, Score Splitter works with PDF files containing sheet music. The application is optimized for standard music notation.
 
-## Development
+**Q: Is my uploaded music kept private?**  
+A: Yes, all processing is done locally. Your music files are not stored on external servers.
 
-### Frontend
+**Q: Can I process multiple files at once?**  
+A: Yes, you can upload and process multiple PDF files in batch operations.
 
-- **Framework**: React 19 + TypeScript
-- **Build Tool**: Vite
-- **Development Server**: http://localhost:5173
-- **Features**: 
-  - PDF.js integration for PDF rendering
-  - React Router for navigation
-  - Internationalization (i18next)
+**Q: What if my PDF doesn't process correctly?**  
+A: Ensure your PDF contains readable sheet music and is not password-protected. High-quality, clear PDFs work best.
 
-### Backend
+**Q: Is Score Splitter free to use?**  
+A: Yes, Score Splitter is completely free and open source.
 
-- **Language**: Go 1.25
-- **Port**: 8085
-- **Docker**: Development uses Docker Compose
-- **Features**:
-  - Connect RPC for API communication
-  - PDF processing with pdfcpu
-  - Video generation with FFmpeg
-  - File upload handling
+## Getting Started
 
-### API
+Ready to try Score Splitter? Simply visit the application in your web browser and start uploading your sheet music. No registration or downloads required for basic use.
 
-- **Protocol**: Connect RPC
-- **Endpoints**: `/score.ScoreService/*`
+## Support
 
-## Docker Development
-
-The backend runs in Docker containers with hot-reload functionality:
-
-```bash
-# Start backend with Docker only
-make docker-dev
-
-# View logs
-make logs
-
-# Clean up Docker environment
-make docker-clean
-```
-
-## Production Deployment
-
-```bash
-# Production build
-make prod-build
-
-# Check production Docker image
-docker images | grep score-splitter-backend
-```
-
-## Troubleshooting
-
-### Dependency Issues
-```bash
-make check-deps  # Verify required tools
-make reset       # Reset project state
-```
-
-### Port Conflicts
-- **Frontend**: If port 5173 is in use, Vite will automatically use another port
-- **Backend**: Check port 8085 with `lsof -i :8085`
-
-### Docker Issues
-```bash
-make docker-clean  # Clean Docker resources
-docker system prune -f  # Remove unused Docker data
-```
-
-## Development Workflow
-
-1. **Start Development**
-   ```bash
-   make dev
-   ```
-
-2. **Make Changes**
-   - Frontend: Automatic reload
-   - Backend: Automatic rebuild and restart
-
-3. **Quality Checks**
-   ```bash
-   make lint
-   make test
-   ```
-
-4. **Before Committing**
-   ```bash
-   make clean
-   make build  # Verify build integrity
-   ```
-
-## Technology Stack
-
-### Frontend Dependencies
-- **React** 19.1.1 - UI framework
-- **TypeScript** 5.8 - Type safety
-- **Vite** 7.2.0 - Build tool and dev server
-- **PDF.js** 5.4.149 - PDF rendering
-- **React Router** 7.9.3 - Client-side routing
-- **i18next** 25.6.0 - Internationalization
-
-### Backend Dependencies
-- **Go** 1.25 - Backend language
-- **Connect RPC** 1.18.1 - API protocol
-- **pdfcpu** 0.11.0 - PDF processing
-- **FFmpeg-go** 0.5.0 - Video generation
-- **Protocol Buffers** - API definition
-
-## Contributing
-
-We welcome contributions! Here's how you can help:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Run quality checks (`make lint && make test`)
-5. Commit your changes (`git commit -m 'Add some amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
-
-### Development Guidelines
-
-- Follow the existing code style
-- Write tests for new features
-- Update documentation as needed
-- Ensure all checks pass before submitting PR
-
-## License
-
-This project is released under the MIT License. See [LICENSE](LICENSE) for details.
-
-## Tips
-
-- Use `make help` to see all available commands
-- Use `make status` to quickly check service status
-- Monitor backend logs during development with `make logs`
-- After stopping with `Ctrl+C`, run `make stop` for complete cleanup
+If you find Score Splitter helpful:
+- ⭐ Star this repository
+- 📢 Share it with fellow musicians and teachers
+- 🐛 Report any issues or suggest new features
 
 ---
 
-Built with ❤️ for the music education community
+Made with ❤️ for musicians, teachers, and music lovers everywhere
