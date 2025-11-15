@@ -8,7 +8,6 @@ import {
   type ChangeEvent,
   type ReactElement,
 } from "react";
-import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { usePractice } from "./practiceContext";
 import { useLanguage } from "./hooks/useLanguage";
@@ -334,7 +333,6 @@ function PracticePage(): ReactElement {
   const { t } = useTranslation();
   const { navigateWithLanguage } = useLanguage();
   const { practiceData, setPracticeData } = usePractice();
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (!practiceData) {

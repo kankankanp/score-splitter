@@ -16,7 +16,6 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { trimScore } from "./api/scoreClient";
 import { usePractice } from "./practiceContext";
@@ -117,7 +116,6 @@ function cloneAreasWithNewIds(areas: CropArea[]): CropArea[] {
 function TrimEditor(): ReactElement {
   const { t } = useTranslation();
   const { navigateWithLanguage, currentLanguage } = useLanguage();
-  const navigate = useNavigate();
   const { practiceData, setPracticeData } = usePractice();
 
   const [pdfName, setPdfName] = useState<string>("");
@@ -784,7 +782,7 @@ function TrimEditor(): ReactElement {
       return;
     }
     let createdAreas: CropArea[] | undefined;
-    setPageSpecificAreas((current: { [x: string]: CropArea[] | undefined; }) => {
+    setPageSpecificAreas((current: Record<number, CropArea[]>) => {
       if (current[selectedPageNumber]) {
         createdAreas = current[selectedPageNumber];
         return current;

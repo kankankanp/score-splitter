@@ -30,10 +30,9 @@ i18n
       // Detect language from path, localStorage, then navigator
       order: ['path', 'localStorage', 'navigator'],
       lookupFromPathIndex: 0,
-      checkWhitelist: true,
       
       // Custom path language detection
-      convertDetectedLanguage: (lng) => {
+      convertDetectedLanguage: () => {
         // Extract language from URL path
         const path = window.location.pathname;
         if (path.startsWith('/ja')) {
