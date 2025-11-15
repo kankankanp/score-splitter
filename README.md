@@ -1,167 +1,110 @@
 # Score Splitter
 
-楽譜分割・動画生成アプリケーション
+<p align="center">
+  Transform your PDF sheet music into educational content with ease.
+</p>
 
-## 🚀 クイックスタート
+<p align="center">
+  <a href="#what-is-score-splitter">About</a> |
+  <a href="#how-to-use">How to Use</a> |
+  <a href="#use-cases">Use Cases</a> |
+  <a href="#frequently-asked-questions">FAQ</a>
+</p>
 
-### 必要な環境
-- Node.js (18+)
-- Go (1.24+)
-- Docker & Docker Compose
+## What is Score Splitter?
 
-### 初期セットアップ
-```bash
-# プロジェクトをクローン
-git clone [repository-url]
-cd score-splitter
+Score Splitter is a user-friendly application that helps musicians, music teachers, and students work with PDF sheet music more effectively. Upload your sheet music, and the application will intelligently process and split it into manageable sections, making it perfect for practice, teaching, or creating educational content.
 
-# 依存関係のチェックとインストール
-make setup
-```
+## Features
 
-### 開発環境の起動
-```bash
-# フロントエンドとバックエンドを同時に起動
-make dev
-```
+| 🎼 Smart Score Processing | 🎥 Video Generation | 📱 Easy to Use |
+| --- | --- | --- |
+| Automatically splits PDF sheet music into individual pages or sections with precision. | Generate practice videos and educational content directly from your sheet music. | Simple, intuitive interface that anyone can use without technical knowledge. |
 
-アクセス:
-- フロントエンド: http://localhost:5173
-- バックエンド: http://localhost:8085
-- バックエンドヘルスチェック: http://localhost:8085/health
+## How to Use
 
-## 📋 利用可能なコマンド
+### 1. Upload Your Sheet Music
+- Click the upload button and select your PDF sheet music file
+- The application supports standard PDF files containing musical scores
 
-### 基本操作
-```bash
-make help          # 利用可能なコマンド一覧
-make dev           # 開発環境を起動
-make status        # サービス状態を確認
-make stop          # 全サービスを停止
-```
+### 2. Processing
+- Score Splitter automatically analyzes your sheet music
+- The PDF is intelligently split into individual pages or sections
+- Preview the results before proceeding
 
-### 個別操作
-```bash
-make dev-frontend  # フロントエンドのみ起動
-make dev-backend   # バックエンドのみ起動（Docker）
-make docker-dev    # バックエンドをDockerで起動
-```
+### 3. Generate Content
+- Choose your output format (split PDFs, videos, etc.)
+- Customize settings according to your needs
+- Download your processed files
 
-### ビルド・テスト
-```bash
-make build         # 全体をビルド
-make test          # テストを実行
-make lint          # コードチェック
-```
+### 4. Use Your Content
+- Use split pages for individual practice sessions
+- Share videos with students or fellow musicians
+- Organize your music library more effectively
 
-### メンテナンス
-```bash
-make clean         # ビルド成果物を削除
-make reset         # プロジェクトをリセット
-make update        # 依存関係を更新
-```
+## Use Cases
 
-## 🏗️ プロジェクト構成
+### For Music Teachers
+- Split lesson materials into individual pages
+- Create practice videos for students
+- Organize course materials efficiently
 
-```
-score-splitter/
-├── frontend/           # React + Vite フロントエンド
-│   ├── src/
-│   ├── package.json
-│   └── vite.config.ts
-├── backend/            # Go バックエンド
-│   ├── docker/         # Docker設定
-│   ├── main.go
-│   └── go.mod
-├── Makefile           # プロジェクト管理用
-└── README.md
-```
+### For Students
+- Break down complex pieces into manageable sections
+- Create personal practice materials
+- Study individual parts of compositions
 
-## 🔧 開発について
+### For Musicians
+- Prepare performance materials
+- Share specific sections with ensemble members
+- Create digital music libraries
 
-### フロントエンド
-- **フレームワーク**: React 19 + TypeScript
-- **ビルドツール**: Vite
-- **開発サーバー**: http://localhost:5173
+## Supported File Formats
 
-### バックエンド
-- **言語**: Go 1.24
-- **ポート**: 8085
-- **Docker**: 開発環境ではDocker Composeを使用
+### Input
+- **PDF files** containing sheet music
+- Standard music notation PDFs
+- Scanned sheet music (as PDF)
 
-### API
-- **プロトコル**: Connect RPC
-- **エンドポイント**: `/score.ScoreService/*`
+### Output
+- Individual PDF pages
+- Video files for educational content
+- Organized file collections
 
-## 🐳 Docker を使った開発
+## Tips for Best Results
 
-バックエンドはDockerコンテナで動作し、ホットリロード機能付きです：
+1. **High-Quality PDFs**: Use clear, high-resolution PDF files for better processing results
+2. **Standard Notation**: Works best with traditional music notation
+3. **Clean Files**: Ensure your PDFs don't have excessive margins or annotations that might interfere with processing
 
-```bash
-# Docker環境のみでバックエンドを起動
-make docker-dev
+## Frequently Asked Questions
 
-# ログを確認
-make logs
+**Q: What types of music files can I upload?**  
+A: Currently, Score Splitter works with PDF files containing sheet music. The application is optimized for standard music notation.
 
-# Docker環境をクリーンアップ
-make docker-clean
-```
+**Q: Is my uploaded music kept private?**  
+A: Yes, all processing is done locally. Your music files are not stored on external servers.
 
-## 🚀 本番デプロイ
+**Q: Can I process multiple files at once?**  
+A: Yes, you can upload and process multiple PDF files in batch operations.
 
-```bash
-# 本番用ビルド
-make prod-build
+**Q: What if my PDF doesn't process correctly?**  
+A: Ensure your PDF contains readable sheet music and is not password-protected. High-quality, clear PDFs work best.
 
-# 本番用Dockerイメージの確認
-docker images | grep score-splitter-backend
-```
+**Q: Is Score Splitter free to use?**  
+A: Yes, Score Splitter is completely free and open source.
 
-## 🛠️ トラブルシューティング
+## Getting Started
 
-### 依存関係エラー
-```bash
-make check-deps  # 必要なツールを確認
-make reset       # プロジェクトをリセット
-```
+Ready to try Score Splitter? Simply visit the application in your web browser and start uploading your sheet music. No registration or downloads required for basic use.
 
-### ポート競合
-- フロントエンド: 5173ポートが使用中の場合、Viteが自動的に別ポートを使用
-- バックエンド: 8085ポートを確認 `lsof -i :8085`
+## Support
 
-### Docker関連
-```bash
-make docker-clean  # Dockerリソースをクリーンアップ
-docker system prune -f  # 不要なDockerデータを削除
-```
+If you find Score Splitter helpful:
+- ⭐ Star this repository
+- 📢 Share it with fellow musicians and teachers
+- 🐛 Report any issues or suggest new features
 
-## 📝 開発フロー
+---
 
-1. **開発開始**
-   ```bash
-   make dev
-   ```
-
-2. **コード変更**
-   - フロントエンド: 自動リロード
-   - バックエンド: 自動リビルド・リスタート
-
-3. **テスト・品質チェック**
-   ```bash
-   make lint
-   make test
-   ```
-
-4. **コミット前**
-   ```bash
-   make clean
-   make build  # ビルドエラーチェック
-   ```
-
-## 💡 Tips
-
-- `make help` で全コマンドを確認
-- `make status` でサービス状態を素早く確認
-- 開発中は `make logs` でバックエンドログを監視
-- `Ctrl+C` で開発サーバーを停止後、`make stop` で確実にクリーンアップ
+Made with ❤️ for musicians, teachers, and music lovers everywhere

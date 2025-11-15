@@ -13,7 +13,7 @@ function resolveBaseUrl(): string {
   if (raw && raw.trim().length > 0) {
     return sanitizeBaseUrl(raw.trim());
   }
-  // 開発環境では空文字列を返してプロキシを使用
+  // Return empty string in dev environment to use proxy
   return "";
 }
 
@@ -21,7 +21,7 @@ const baseUrl = resolveBaseUrl();
 const UPLOAD_ENDPOINT = `${baseUrl}/score.ScoreService/UploadScore`;
 const TRIM_ENDPOINT = `${baseUrl}/score.ScoreService/TrimScore`;
 
-// デバッグ情報をコンソールに出力
+// Output debug information to console
 console.log("API Configuration:", {
   baseUrl,
   UPLOAD_ENDPOINT,
@@ -64,6 +64,7 @@ export type TrimScoreParams = {
   pageSettings?: PageTrimSetting[];
   orientation?: "portrait" | "landscape";
   onProgress?: (progress: TrimScoreProgress) => void;
+  language?: string;
 };
 
 export type TrimScoreProgress = {
@@ -148,7 +149,7 @@ export async function uploadScore({
       (data as { error?: { message?: string } })?.error?.message ||
       (data as { message?: string })?.message;
     throw new Error(
-      message ? `アップロードに失敗しました: ${message}` : `アップロードに失敗しました (HTTP ${response.status})`,
+      message ? `Upload failed: ${message}` : `Upload failed (HTTP ${response.status})`,
     );
   }
 
@@ -157,7 +158,7 @@ export async function uploadScore({
     scoreId?: string;
   };
   return {
-    message: body.message || "アップロードが完了しました",
+    message: body.message || "Upload completed",
     scoreId: body.scoreId || "",
   };
 }
@@ -171,12 +172,13 @@ export async function trimScore({
   pageSettings,
   orientation = "portrait",
   onProgress,
+  language = "en",
 }: TrimScoreParams): Promise<TrimScoreResponse> {
   if (areas.length === 0 && (!pageSettings || pageSettings.length === 0)) {
-    throw new Error("トリミングエリアを指定してください");
+    throw new Error("Please specify trimming areas");
   }
 
-  // プログレスコールバックがある場合はストリーミングAPIを使用
+  // Use streaming API if progress callback is provided
   if (onProgress) {
     return trimScoreWithProgress({
       title,
@@ -187,10 +189,11 @@ export async function trimScore({
       pageSettings,
       orientation,
       onProgress,
+      language,
     });
   }
 
-  // 従来のAPIを使用（プログレスなし）
+  // Use legacy API (no progress)
   const payload: {
     title: string;
     pdfFile: string;
@@ -236,7 +239,7 @@ export async function trimScore({
       pdfBytesLength: pdfBytes.length,
       areasCount: areas.length,
     });
-    throw new Error("PDFの内容を読み取れませんでした");
+    throw new Error("Could not read PDF content");
   }
 
   if (import.meta.env.DEV) {
@@ -262,7 +265,10 @@ export async function trimScore({
 
   const response = await fetch(TRIM_ENDPOINT, {
     method: "POST",
-    headers: CONNECT_HEADERS,
+    headers: {
+      ...CONNECT_HEADERS,
+      "X-Language": language,
+    },
     body: JSON.stringify(payload),
   });
 
@@ -281,7 +287,7 @@ export async function trimScore({
       (data as { error?: { message?: string } })?.error?.message ||
       (data as { message?: string })?.message;
     throw new Error(
-      message ? `トリミングに失敗しました: ${message}` : `トリミングに失敗しました (HTTP ${response.status})`,
+      message ? `Trimming failed: ${message}` : `Trimming failed (HTTP ${response.status})`,
     );
   }
 
@@ -293,33 +299,33 @@ export async function trimScore({
   };
   const base64 = body.trimmedPdf || body.trimmed_pdf;
   if (typeof base64 !== "string" || base64.length === 0) {
-    console.error("Base64データが見つかりません:", {
+    console.error("Base64 data not found:", {
       body,
       trimmedPdf: body.trimmedPdf,
       trimmed_pdf: body.trimmed_pdf,
     });
-    throw new Error("生成されたPDFを取得できませんでした");
+    throw new Error("Could not retrieve generated PDF");
   }
 
-  console.log("Base64データを変換中:", {
+  console.log("Converting Base64 data:", {
     base64Length: base64.length,
     base64Sample: base64.substring(0, 100),
   });
 
   const pdfData = base64ToUint8Array(base64);
-  console.log("PDFデータ変換完了:", {
+  console.log("PDF data conversion completed:", {
     pdfDataLength: pdfData.length,
     pdfDataType: typeof pdfData,
   });
 
   return {
-    message: body.message || "トリミングが完了しました",
+    message: body.message || "Trimming completed",
     filename: body.filename || "trimmed-score.pdf",
     pdfData,
   };
 }
 
-// ストリーミングAPIを使用してプログレス付きでトリミングを実行
+// Use streaming API to execute trimming with progress
 async function trimScoreWithProgress({
   title,
   pdfBytes,
@@ -329,25 +335,26 @@ async function trimScoreWithProgress({
   pageSettings,
   orientation = "portrait",
   onProgress,
+  language = "en",
 }: TrimScoreParams): Promise<TrimScoreResponse> {
-  // プログレス状況をシミュレート
+  // Simulate progress status
   const updateProgress = (stage: string, progress: number, message: string) => {
     onProgress?.({ stage, progress, message });
   };
 
   // 段階1: 初期化
-  updateProgress("parsing", 10, "PDFファイルを検証しています...");
+  updateProgress("parsing", 10, "Validating PDF file...");
   await new Promise(resolve => setTimeout(resolve, 300));
 
   // 段階2: 準備
-  updateProgress("parsing", 25, "トリミングエリアを処理しています...");
+  updateProgress("parsing", 25, "Processing trimming areas...");
   await new Promise(resolve => setTimeout(resolve, 200));
 
-  // 段階3: 処理開始
-  updateProgress("processing", 40, "PDFページを処理しています...");
+  // Stage 3: Start processing
+  updateProgress("processing", 40, "Processing PDF pages...");
   await new Promise(resolve => setTimeout(resolve, 300));
 
-  // 従来のAPIを使用して実際の処理を実行
+  // Use legacy API for actual processing
   const payload: {
     title: string;
     pdfFile: string;
@@ -394,11 +401,11 @@ async function trimScoreWithProgress({
       pdfBytesLength: pdfBytes.length,
       areasCount: areas.length,
     });
-    throw new Error("PDFの内容を読み取れませんでした");
+    throw new Error("Could not read PDF content");
   }
 
-  // 段階4: サーバー処理中
-  updateProgress("processing", 60, "サーバーでPDFを処理しています...");
+  // Stage 4: Server processing
+  updateProgress("processing", 60, "Server is processing PDF...");
 
   const endpoint = `${baseUrl}/score.ScoreService/TrimScore`;
 
@@ -407,12 +414,13 @@ async function trimScoreWithProgress({
     headers: {
       "Content-Type": "application/json",
       "Connect-Protocol-Version": "1",
+      "X-Language": language,
     },
     body: JSON.stringify(payload),
   });
 
-  // 段階5: 生成中
-  updateProgress("generating", 85, "PDFを生成しています...");
+  // Stage 5: Generating
+  updateProgress("generating", 85, "Generating PDF...");
   await new Promise(resolve => setTimeout(resolve, 200));
 
   if (!response.ok) {
@@ -427,7 +435,7 @@ async function trimScoreWithProgress({
       (data as { error?: { message?: string } })?.error?.message ||
       (data as { message?: string })?.message;
     throw new Error(
-      message ? `トリミングに失敗しました: ${message}` : `トリミングに失敗しました (HTTP ${response.status})`,
+      message ? `Trimming failed: ${message}` : `Trimming failed (HTTP ${response.status})`,
     );
   }
 
@@ -441,21 +449,21 @@ async function trimScoreWithProgress({
   
   const base64 = body.trimmedPdf || body.trimmed_pdf;
   if (typeof base64 !== "string" || base64.length === 0) {
-    throw new Error("PDFデータの取得に失敗しました");
+    throw new Error("Failed to retrieve PDF data");
   }
 
-  // 段階6: 完了
+  // Stage 6: Complete
   if (orientation === "landscape") {
-    updateProgress("generating", 95, "スライド形式に変換しています...");
+    updateProgress("generating", 95, "Converting to slide format...");
     await new Promise(resolve => setTimeout(resolve, 200));
   }
 
-  updateProgress("complete", 100, "トリミング済みPDFを生成しました");
+  updateProgress("complete", 100, "Generated trimmed PDF");
 
   const pdfData = base64ToUint8Array(base64);
 
   return {
-    message: body.message || "トリミングが完了しました",
+    message: body.message || "Trimming completed",
     filename: body.filename || "trimmed-score.pdf",
     pdfData,
   };

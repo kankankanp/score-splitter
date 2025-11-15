@@ -27,6 +27,74 @@ import (
 
 type scoreService struct{}
 
+// getLanguageFromRequest extracts language from request headers or path
+func getLanguageFromRequest(req *connect.Request[score.TrimScoreRequest]) string {
+	// Check Accept-Language header first
+	if acceptLang := req.Header().Get("Accept-Language"); acceptLang != "" {
+		if strings.Contains(strings.ToLower(acceptLang), "ja") {
+			return "ja"
+		}
+	}
+	
+	// Check custom language header
+	if lang := req.Header().Get("X-Language"); lang != "" {
+		if lang == "ja" || lang == "jp" {
+			return "ja"
+		}
+	}
+	
+	// Check Referer header for /ja path
+	if referer := req.Header().Get("Referer"); referer != "" {
+		if strings.Contains(referer, "/ja/") || strings.Contains(referer, "/ja") {
+			return "ja"
+		}
+	}
+	
+	// Default to English
+	return "en"
+}
+
+// getLocalizedMessage returns the appropriate message based on language
+func getLocalizedMessage(messageKey, lang string) string {
+	messages := map[string]map[string]string{
+		"pdf_validation": {
+			"en": "Validating PDF file...",
+			"ja": "PDFファイルを検証しています...",
+		},
+		"parsing_areas": {
+			"en": "Parsing trimming areas...",
+			"ja": "トリミングエリアを解析しています...",
+		},
+		"processing_pdf": {
+			"en": "Processing PDF pages...",
+			"ja": "PDFページを処理しています...",
+		},
+		"generating_pdf": {
+			"en": "Generating trimmed PDF...",
+			"ja": "トリミング済みPDFを生成中...",
+		},
+		"conversion_complete": {
+			"en": "Generated trimmed PDF",
+			"ja": "トリミング済みPDFを生成しました",
+		},
+	}
+	
+	if langMap, exists := messages[messageKey]; exists {
+		if msg, exists := langMap[lang]; exists {
+			return msg
+		}
+	}
+	
+	// Fallback to English if key not found
+	if langMap, exists := messages[messageKey]; exists {
+		if msg, exists := langMap["en"]; exists {
+			return msg
+		}
+	}
+	
+	return messageKey // Return key as fallback
+}
+
 type normalizedArea struct {
 	top    float64
 	left   float64
@@ -59,18 +127,49 @@ func (s *scoreService) UploadScore(
 	return res, nil
 }
 
+// getLanguageFromTrimRequest extracts language from TrimScore request headers
+func getLanguageFromTrimRequest(req *connect.Request[score.TrimScoreRequest]) string {
+	// Check Accept-Language header first
+	if acceptLang := req.Header().Get("Accept-Language"); acceptLang != "" {
+		if strings.Contains(strings.ToLower(acceptLang), "ja") {
+			return "ja"
+		}
+	}
+	
+	// Check custom language header
+	if lang := req.Header().Get("X-Language"); lang != "" {
+		if lang == "ja" || lang == "jp" {
+			return "ja"
+		}
+	}
+	
+	// Check Referer header for /ja path
+	if referer := req.Header().Get("Referer"); referer != "" {
+		if strings.Contains(referer, "/ja/") || strings.Contains(referer, "/ja") {
+			return "ja"
+		}
+	}
+	
+	// Default to English
+	return "en"
+}
+
 func (s *scoreService) TrimScore(
 	ctx context.Context,
 	req *connect.Request[score.TrimScoreRequest],
 ) (*connect.Response[score.TrimScoreResponse], error) {
 	_ = ctx
 
+	// Get language from request
+	lang := getLanguageFromTrimRequest(req)
+
 	log.Printf(
-		"TrimScore request: title=%s pdfBytes=%d areas=%d pageSettings=%d",
+		"TrimScore request: title=%s pdfBytes=%d areas=%d pageSettings=%d lang=%s",
 		req.Msg.GetTitle(),
 		len(req.Msg.GetPdfFile()),
 		len(req.Msg.GetAreas()),
 		len(req.Msg.GetPageSettings()),
+		lang,
 	)
 	if pages := req.Msg.GetIncludePages(); len(pages) > 0 {
 		log.Printf("TrimScore includePages: %v", pages)
@@ -129,7 +228,7 @@ func (s *scoreService) TrimScore(
 
 	filename := deriveFilename(req.Msg.GetTitle())
 	res := connect.NewResponse(&score.TrimScoreResponse{
-		Message:    "トリミング済みPDFを生成しました",
+		Message:    getLocalizedMessage("conversion_complete", lang),
 		TrimmedPdf: trimmed,
 		Filename:   filename,
 	})
@@ -145,20 +244,24 @@ func (s *scoreService) TrimScoreWithProgress(
 ) error {
 	_ = ctx
 
+	// Get language from request
+	lang := getLanguageFromRequest(req)
+
 	log.Printf(
-		"TrimScoreWithProgress request: title=%s pdfBytes=%d areas=%d pageSettings=%d orientation=%s",
+		"TrimScoreWithProgress request: title=%s pdfBytes=%d areas=%d pageSettings=%d orientation=%s lang=%s",
 		req.Msg.GetTitle(),
 		len(req.Msg.GetPdfFile()),
 		len(req.Msg.GetAreas()),
 		len(req.Msg.GetPageSettings()),
 		req.Msg.GetOrientation(),
+		lang,
 	)
 
 	// 段階1: PDFファイル検証
 	if err := stream.Send(&score.TrimScoreProgressResponse{
 		Stage:    "parsing",
 		Progress: 10,
-		Message:  "PDFファイルを検証しています...",
+		Message:  getLocalizedMessage("pdf_validation", lang),
 	}); err != nil {
 		return err
 	}
@@ -172,7 +275,7 @@ func (s *scoreService) TrimScoreWithProgress(
 	if err := stream.Send(&score.TrimScoreProgressResponse{
 		Stage:    "parsing",
 		Progress: 25,
-		Message:  "トリミングエリアを処理しています...",
+		Message:  getLocalizedMessage("parsing_areas", lang),
 	}); err != nil {
 		return err
 	}
@@ -213,7 +316,7 @@ func (s *scoreService) TrimScoreWithProgress(
 	if err := stream.Send(&score.TrimScoreProgressResponse{
 		Stage:    "processing",
 		Progress: 40,
-		Message:  "PDFページを処理しています...",
+		Message:  getLocalizedMessage("processing_pdf", lang),
 	}); err != nil {
 		return err
 	}
@@ -227,6 +330,7 @@ func (s *scoreService) TrimScoreWithProgress(
 		pageOverrides,
 		req.Msg.GetOrientation(),
 		stream,
+		lang,
 	)
 	if err != nil {
 		if errors.Is(err, pdfcpu.ErrWrongPassword) {
@@ -248,7 +352,7 @@ func (s *scoreService) TrimScoreWithProgress(
 	if err := stream.Send(&score.TrimScoreProgressResponse{
 		Stage:       "complete",
 		Progress:    100,
-		Message:     "トリミング済みPDFを生成しました",
+		Message:     getLocalizedMessage("conversion_complete", lang),
 		TrimmedPdf:  trimmed,
 		Filename:    filename,
 	}); err != nil {
@@ -468,6 +572,7 @@ func buildTrimmedPDFWithProgress(
 	pageOverrides map[int][]normalizedArea,
 	orientation string,
 	stream *connect.ServerStream[score.TrimScoreProgressResponse],
+	lang string,
 ) ([]byte, error) {
 	if len(defaultAreas) == 0 && len(pageOverrides) == 0 {
 		return nil, errors.New("トリミングエリアがありません")
@@ -576,7 +681,7 @@ func buildTrimmedPDFWithProgress(
 	if err := stream.Send(&score.TrimScoreProgressResponse{
 		Stage:    "generating",
 		Progress: 85,
-		Message:  "PDFを生成しています...",
+		Message:  getLocalizedMessage("generating_pdf", lang),
 	}); err != nil {
 		return nil, err
 	}
